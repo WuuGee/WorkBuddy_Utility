@@ -1,0 +1,160 @@
+<Window x:Class="FocusCatAI.Presentation.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WorkBuddy Settings" Width="720" Height="520" MinWidth="620" MinHeight="460"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="True" Background="#FFF7F7F9"
+        FontFamily="Segoe UI" FontSize="13">
+    <Window.Resources>
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,14" />
+        </Style>
+        <Style x:Key="Row" TargetType="FrameworkElement">
+            <Setter Property="Margin" Value="0,0,0,12" />
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FF6B6B76" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="22,2,0,0" />
+        </Style>
+        <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="Margin" Value="0,0,0,2" />
+        </Style>
+        <Style x:Key="Label" TargetType="TextBlock">
+            <Setter Property="Margin" Value="0,0,0,4" />
+        </Style>
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Padding" Value="14,6" />
+            <Setter Property="Margin" Value="0,0,10,10" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="190" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border Background="#FFEDEDF2" BorderBrush="#FFD8D8E0" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Text="WorkBuddy" FontSize="18" FontWeight="Bold" Margin="18,18,18,12" />
+                <TextBlock DockPanel.Dock="Bottom" x:Name="VersionLabel" Foreground="#FF6B6B76" Margin="18,8,18,14" />
+                <ListBox x:Name="Categories" Background="Transparent" BorderThickness="0" SelectedIndex="0"
+                         SelectionChanged="OnCategoryChanged" Margin="6,0">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="12,9" />
+                            <Setter Property="Margin" Value="0,1" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBoxItem Content="General" />
+                    <ListBoxItem Content="Pet" />
+                    <ListBoxItem Content="Behavior" />
+                    <ListBoxItem Content="Quiet Hours" />
+                    <ListBoxItem Content="Notifications" />
+                    <ListBoxItem Content="Advanced" />
+                </ListBox>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Column="1" Margin="28,22,28,18">
+            <StackPanel x:Name="PageGeneral">
+                <TextBlock Style="{StaticResource SectionTitle}" Text="General" />
+                <StackPanel Style="{StaticResource Row}">
+                    <CheckBox Content="Start WorkBuddy when Windows starts" IsChecked="{Binding StartWithWindows, Mode=TwoWay}" />
+                    <TextBlock Style="{StaticResource Hint}" Foreground="#FFB45309" Text="{Binding StartupStatusText}" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource Row}">
+                    <CheckBox Content="Start minimized (tray only)" IsChecked="{Binding StartMinimized, Mode=TwoWay}" />
+                    <TextBlock Style="{StaticResource Hint}" Text="The pet stays hidden at launch. Use Show Cat in the tray menu to bring it back." />
+                </StackPanel>
+                <StackPanel Style="{StaticResource Row}">
+                    <CheckBox Content="Run in taskbar mode" IsChecked="{Binding RunInTaskbarMode, Mode=TwoWay}" />
+                    <TextBlock Style="{StaticResource Hint}" Text="Off keeps the pet above the taskbar instead of walking along it." />
+                </StackPanel>
+                <TextBlock Style="{StaticResource Label}" Text="Language" />
+                <TextBlock Text="{Binding Language}" Foreground="#FF6B6B76" />
+            </StackPanel>
+
+            <StackPanel x:Name="PagePet" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource SectionTitle}" Text="Pet" />
+                <CheckBox Style="{StaticResource Row}" Content="Show pet" IsChecked="{Binding ShowPet, Mode=TwoWay}" />
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Pet size" />
+                    <ComboBox ItemsSource="{Binding Sizes}" SelectedItem="{Binding Size, Mode=TwoWay}" Width="200" HorizontalAlignment="Left" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}">
+                        <Run Text="Animation speed: " /><Run Text="{Binding AnimationSpeed, StringFormat={}{0:0.0}x, Mode=OneWay}" />
+                    </TextBlock>
+                    <Slider Minimum="0.5" Maximum="2" TickFrequency="0.1" IsSnapToTickEnabled="True" Width="260" HorizontalAlignment="Left"
+                            Value="{Binding AnimationSpeed, Mode=TwoWay}" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Placement" />
+                    <ComboBox ItemsSource="{Binding Placements}" SelectedItem="{Binding Placement, Mode=TwoWay}" Width="200" HorizontalAlignment="Left" />
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
+                               Text="Auto walks in the taskbar when it can be read, and otherwise stays above it." />
+                </StackPanel>
+                <CheckBox Style="{StaticResource Row}" Content="Play intro animation on first launch" IsChecked="{Binding EnableIntroAnimation, Mode=TwoWay}" />
+            </StackPanel>
+
+            <StackPanel x:Name="PageBehavior" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource SectionTitle}" Text="Behavior" />
+                <CheckBox Style="{StaticResource Row}" Content="Enable messages" IsChecked="{Binding EnableMessages, Mode=TwoWay}" />
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Message frequency" />
+                    <ComboBox ItemsSource="{Binding Frequencies}" SelectedItem="{Binding MessageFrequency, Mode=TwoWay}" Width="200" HorizontalAlignment="Left" />
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="Low: every 30 minutes. Normal: every 15. High: every 5." />
+                </StackPanel>
+                <CheckBox Style="{StaticResource Row}" Content="Enable sleep behavior" IsChecked="{Binding EnableSleep, Mode=TwoWay}" />
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Fall asleep after" />
+                    <ComboBox ItemsSource="{Binding SleepDelayOptions}" DisplayMemberPath="Label" SelectedValuePath="Seconds"
+                              SelectedValue="{Binding SleepDelaySeconds, Mode=TwoWay}" Width="200" HorizontalAlignment="Left" />
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel x:Name="PageQuiet" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource SectionTitle}" Text="Quiet Hours" />
+                <CheckBox Style="{StaticResource Row}" Content="Enable quiet hours" IsChecked="{Binding QuietHoursEnabled, Mode=TwoWay}" />
+                <StackPanel Orientation="Horizontal" Style="{StaticResource Row}">
+                    <StackPanel Margin="0,0,24,0">
+                        <TextBlock Style="{StaticResource Label}" Text="Start (HH:mm)" />
+                        <TextBox Text="{Binding QuietStart, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Width="90" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource Label}" Text="End (HH:mm)" />
+                        <TextBox Text="{Binding QuietEnd, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Width="90" />
+                    </StackPanel>
+                </StackPanel>
+                <TextBlock Style="{StaticResource Hint}" Margin="0"
+                           Text="The pet stays silent during these hours. Ranges that cross midnight, such as 22:00 to 07:00, work. It still moves and animates." />
+            </StackPanel>
+
+            <StackPanel x:Name="PageNotifications" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource SectionTitle}" Text="Notifications" />
+                <CheckBox Style="{StaticResource Row}" Content="Enable productivity messages" IsChecked="{Binding EnableProductivityMessages, Mode=TwoWay}" />
+                <CheckBox Style="{StaticResource Row}" Content="Enable Pomodoro messages" IsChecked="{Binding EnablePomodoroMessages, Mode=TwoWay}" />
+                <TextBlock Style="{StaticResource Hint}" Margin="0" Text="'Enable messages' on the Behavior page switches every message off." />
+            </StackPanel>
+
+            <StackPanel x:Name="PageAdvanced" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource SectionTitle}" Text="Advanced" />
+                <WrapPanel>
+                    <Button Style="{StaticResource ActionButton}" Content="Open data folder" Click="OnOpenData" />
+                    <Button Style="{StaticResource ActionButton}" Content="Open log folder" Click="OnOpenLogs" />
+                </WrapPanel>
+                <TextBlock Style="{StaticResource Label}" Margin="0,10,0,4" Text="Reset" FontWeight="SemiBold" />
+                <WrapPanel>
+                    <Button Style="{StaticResource ActionButton}" Content="Reset preferences" Click="OnResetPreferences" />
+                    <Button Style="{StaticResource ActionButton}" Content="Reset all settings" Click="OnResetAll" />
+                </WrapPanel>
+                <TextBlock Style="{StaticResource Hint}" Margin="0"
+                           Text="Preferences are the pet's favorite spots. Reset all settings restores every option on these pages to its default." />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Window>

@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\FocusCatAI.Application\FocusCatAI.Application.csproj" />
+    <ProjectReference Include="..\FocusCatAI.Infrastructure\FocusCatAI.Infrastructure.csproj" />
+    <ProjectReference Include="..\FocusCatAI.Monitoring\FocusCatAI.Monitoring.csproj" />
+    <ProjectReference Include="..\FocusCatAI.AI\FocusCatAI.AI.csproj" />
+    <ProjectReference Include="..\FocusCatAI.Domain\FocusCatAI.Domain.csproj" />
+    <ProjectReference Include="..\FocusCatAI.Shared\FocusCatAI.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <PackageReference Include="Hardcodet.NotifyIcon.Wpf" Version="2.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>WorkBuddy</AssemblyName>
+    <RootNamespace>FocusCatAI.Presentation</RootNamespace>
+    <Product>WorkBuddy</Product>
+    <Version>0.1.0</Version>
+    <Company>Qian Tong Low</Company>
+    <Authors>Qian Tong Low</Authors>
+    <Copyright>Copyright © 2026 Qian Tong Low</Copyright>
+    <Description>WorkBuddy - a desktop companion that lives on your taskbar.</Description>
+    <RepositoryUrl>https://github.com/WuuGee/WorkBuddy_Utility</RepositoryUrl>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+</Project>

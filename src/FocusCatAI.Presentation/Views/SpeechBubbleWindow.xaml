@@ -1,0 +1,10 @@
+<Window x:Class="FocusCatAI.Presentation.Views.SpeechBubbleWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
+        ShowActivated="False" Focusable="False" SizeToContent="WidthAndHeight">
+    <Border Background="#FFFFF8E7" BorderBrush="#FF201620" BorderThickness="2" CornerRadius="6" Padding="8,4">
+        <TextBlock x:Name="Message" FontFamily="Consolas" FontSize="13" Foreground="#FF201620" TextWrapping="Wrap" MaxWidth="220" />
+    </Border>
+</Window>
