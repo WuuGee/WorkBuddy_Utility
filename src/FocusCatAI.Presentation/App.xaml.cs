@@ -122,6 +122,12 @@ public partial class App : System.Windows.Application
             _channel = _host.Services.GetRequiredService<SingleInstanceChannel>();
             _channel.StartListening(OnSecondLaunch);
 
+            // Normal launches only (not diagnostics): one quiet, non-blocking check that is silent unless a newer release exists.
+            if (!launch.VerifySettings && !launch.VerifyStartup && launch.TrayPhase == 0)
+            {
+                _ = _host.Services.GetRequiredService<TrayIconService>().CheckForUpdatesQuietlyAsync();
+            }
+
             if (launch.VerifySettings)
             {
                 var passed = await new SettingsVerifier(_host.Services).RunAsync();
@@ -273,7 +279,7 @@ public partial class App : System.Windows.Application
                 services.AddTransient<AboutWindow>();
                 services.AddSingleton<FocusCatAI.Application.Updates.IUpdateChecker>(sp =>
                     new FocusCatAI.Infrastructure.Updates.GitHubUpdateChecker(
-                        new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(10) },
+                        new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) },
                         sp.GetRequiredService<ILogger<FocusCatAI.Infrastructure.Updates.GitHubUpdateChecker>>()));
                 services.AddSingleton<SingleInstanceChannel>();
                 services.AddTransient<SettingsViewModel>();

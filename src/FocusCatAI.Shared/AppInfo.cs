@@ -7,9 +7,10 @@ public static class AppInfo
 {
     public const string RepositoryUrl = "https://github.com/WuuGee/WorkBuddy_Utility";
     public const string ReleasesPageUrl = RepositoryUrl + "/releases";
+    public const string IssuesUrl = RepositoryUrl + "/issues";
     public const string LatestReleaseApiUrl = "https://api.github.com/repos/WuuGee/WorkBuddy_Utility/releases/latest";
 
-    public const string Copyright = "Copyright © 2026 Qian Tong Low";
+    public const string Copyright = "Copyright \u00a9 2026 Qian Tong Low";
 
     public const string Publisher = "Qian Tong Low";
 

@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using System.Globalization;
-using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FocusCatAI.Application.Abstractions;
 using FocusCatAI.Application.Settings;
@@ -19,13 +17,15 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     private readonly IAppPaths _paths;
     private readonly IPetPreferences _preferences;
     private readonly IStartupManager _startup;
+    private readonly IExternalLauncher _launcher;
 
-    public SettingsViewModel(ISettingsService settings, IAppPaths paths, IPetPreferences preferences, IStartupManager startup)
+    public SettingsViewModel(ISettingsService settings, IAppPaths paths, IPetPreferences preferences, IStartupManager startup, IExternalLauncher launcher)
     {
         _settings = settings;
         _paths = paths;
         _preferences = preferences;
         _startup = startup;
+        _launcher = launcher;
         _settings.Changed += OnSettingsChanged;
 
         var options = new List<SleepDelayOption>
@@ -119,9 +119,9 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     public bool EnablePomodoroMessages { get => S.Notifications.EnablePomodoroMessages; set => Edit(s => s with { Notifications = s.Notifications with { EnablePomodoroMessages = value } }); }
 
     // Advanced
-    public void OpenDataFolder() => OpenFolder(_paths.RootDirectory);
+    public void OpenDataFolder() => _launcher.OpenDataFolder();
 
-    public void OpenLogFolder() => OpenFolder(_paths.LogsDirectory);
+    public void OpenLogFolder() => _launcher.OpenLogsFolder();
 
     /// <summary>Restores default favorite spots. Settings and the first-launch flag are untouched.</summary>
     public void ResetPreferences() => _preferences.ResetFavorites();
@@ -139,12 +139,6 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
 
         // Invalid text snaps back to the stored value.
         OnPropertyChanged(property);
-    }
-
-    private static void OpenFolder(string path)
-    {
-        Directory.CreateDirectory(path);
-        Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
     }
 
     // Raised from the settings service, possibly on another thread; the window marshals bindings via the dispatcher.

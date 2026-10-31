@@ -53,6 +53,9 @@ internal static class Native
     [DllImport("user32.dll")]
     private static extern uint GetDpiForSystem();
 
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForWindow(IntPtr hwnd);
+
     [DllImport("shell32.dll")]
     public static extern UIntPtr SHAppBarMessage(uint message, ref APPBARDATA data);
 
@@ -65,20 +68,34 @@ internal static class Native
     [DllImport("user32.dll")]
     private static extern int SetWindowLong(IntPtr hwnd, int index, int value);
 
-    /// <summary>System DPI scale (1.0 = 96 dpi). WPF DIPs = physical pixels / scale.</summary>
-    public static double DpiScale
+    /// <summary>
+    /// DPI scale (1.0 = 96 dpi) of the monitor the taskbar is on. WPF DIPs = physical pixels / scale.
+    /// Never returns zero or less, so callers can divide by it safely.
+    /// </summary>
+    public static double DpiScale => DpiScaleOf(FindWindow("Shell_TrayWnd", null));
+
+    /// <summary>DPI scale of a window. Falls back to the system DPI, then 1.0, when the window is gone (for example while Explorer restarts).</summary>
+    public static double DpiScaleOf(IntPtr hwnd)
     {
-        get
+        uint dpi = 0;
+        try
         {
-            try
+            if (hwnd != IntPtr.Zero)
             {
-                return GetDpiForSystem() / 96.0;
+                dpi = GetDpiForWindow(hwnd);
             }
-            catch
+
+            if (dpi == 0)
             {
-                return 1.0;
+                dpi = GetDpiForSystem();
             }
         }
+        catch (EntryPointNotFoundException)
+        {
+            // Older Windows without the per-window API.
+        }
+
+        return dpi == 0 ? 1.0 : dpi / 96.0;
     }
 
     public static void SetExStyle(IntPtr hwnd, int flag, bool on)

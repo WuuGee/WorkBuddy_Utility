@@ -26,6 +26,9 @@ public sealed class TaskbarLayoutService : BackgroundService, ITaskbarLayoutProv
     private int _failures;
     private bool _loggedGeometry;
     private string _layoutSignature = string.Empty;
+    private int _displayChangeVersion;
+    private volatile bool _stopping;
+    private readonly object _refreshLock = new();
 
     public TaskbarLayoutService(IOptions<PetOptions> options, FocusCatAI.Application.Abstractions.ISettingsService settings, ILogger<TaskbarLayoutService> logger)
     {
@@ -40,7 +43,47 @@ public sealed class TaskbarLayoutService : BackgroundService, ITaskbarLayoutProv
     public override async Task StartAsync(CancellationToken cancellationToken)
     {
         await Task.Run(Refresh, cancellationToken);
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
         await base.StartAsync(cancellationToken);
+    }
+
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _stopping = true;
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        await base.StopAsync(cancellationToken);
+    }
+
+    public override void Dispose()
+    {
+        _stopping = true;
+        Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
+        base.Dispose();
+    }
+
+    // Raised on a SystemEvents thread, in bursts (a resolution or DPI change fires several times). Wait briefly for the
+    // burst to settle, then rescan on a pool thread so the pet repositions at once instead of at the next 3 s poll.
+    // Thread model: the rescan only publishes the volatile layout. It raises no event and touches no window; the pet's
+    // DispatcherTimer reads Current on the UI thread, so Window.Left/Top are only ever set there.
+    private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+    {
+        if (_stopping)
+        {
+            return;
+        }
+
+        var version = Interlocked.Increment(ref _displayChangeVersion);
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(500).ConfigureAwait(false);
+            if (_stopping || version != Volatile.Read(ref _displayChangeVersion))
+            {
+                return;
+            }
+
+            _logger.LogInformation("Display settings changed; refreshing taskbar layout");
+            Refresh();
+        });
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -59,6 +102,14 @@ public sealed class TaskbarLayoutService : BackgroundService, ITaskbarLayoutProv
     }
 
     private void Refresh()
+    {
+        lock (_refreshLock)
+        {
+            RefreshCore();
+        }
+    }
+
+    private void RefreshCore()
     {
         TaskbarLayout next;
         try

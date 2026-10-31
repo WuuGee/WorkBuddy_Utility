@@ -6,7 +6,7 @@ work, and gives gentle, rare reminders. It runs locally, needs no account, and s
 ## Get WorkBuddy
 
 1. Open the [Releases page](https://github.com/WuuGee/WorkBuddy_Utility/releases) and pick the latest version.
-2. Under **Assets**, download `WorkBuddy-Setup-0.1.0.exe` (about 47 MB). You do not need the "Source code" files.
+download `WorkBuddy-Setup-0.1.1.exe` (about 47 MB).
 3. Double-click the downloaded file and follow the steps. No administrator rights are needed, and .NET does not have to be installed.
 4. Leave **Start WorkBuddy when Windows starts** ticked to have the cat appear every time you sign in. You can change this later in Settings.
 5. Tick **Launch WorkBuddy** on the last page, and the cat appears.
@@ -15,12 +15,12 @@ WorkBuddy installs to `%LOCALAPPDATA%\Programs\WorkBuddy`; your settings live in
 
 ### Windows SmartScreen warning
 
-Version 0.1.0 is **not code-signed yet**, so Windows may show "Windows protected your PC". This is expected for a new,
+Version 0.1.1 is **not code-signed yet**
 unsigned app. Choose **More info**, then **Run anyway**. Each release publishes a SHA-256 checksum next to the installer so
 you can confirm the file is genuine. To check it, run this in PowerShell and compare the result with the `.sha256` file:
 
 ```powershell
-Get-FileHash .\WorkBuddy-Setup-0.1.0.exe -Algorithm SHA256
+Get-FileHash .\WorkBuddy-Setup-0.1.1.exe -Algorithm SHA256
 ```
 
 ## Using WorkBuddy

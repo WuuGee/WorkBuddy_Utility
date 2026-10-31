@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using FocusCatAI.Application.Abstractions;
@@ -24,6 +23,7 @@ public sealed class TrayIconService(
     ISettingsService settings,
     IStartupManager startup,
     IServiceProvider services,
+    IExternalLauncher launcher,
     ILogger<TrayIconService> logger) : IDisposable
 {
     public const string ShowCatHeader = "Show Cat";
@@ -32,6 +32,8 @@ public sealed class TrayIconService(
     public const string RestartHeader = "Restart WorkBuddy";
     public const string AboutHeader = "About";
     public const string CheckForUpdatesHeader = "Check for Updates";
+    public const string OpenLogsHeader = "Open Logs Folder";
+    public const string ReportIssueHeader = "Report an Issue";
     public const string ExitHeader = "Exit";
 
     private TaskbarIcon? _icon;
@@ -41,6 +43,11 @@ public sealed class TrayIconService(
     private SettingsWindow? _settingsWindow;
     private AboutWindow? _aboutWindow;
     private bool _checkingForUpdates;
+
+    // Set once the update balloon has been shown. The update balloon is the only balloon this app shows, so a click
+    // can only mean "open the release page". Deliberately not cleared on TrayBalloonTipClosed: Windows 11 can raise
+    // Closed before Clicked, or not at all, which would race with the click.
+    private string? _pendingUpdateReleaseUrl;
 
     /// <summary>The current tooltip text. Exposed for diagnostics.</summary>
     public string? Tooltip => _icon?.ToolTipText;
@@ -73,6 +80,8 @@ public sealed class TrayIconService(
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(AboutHeader, OpenAbout));
         menu.Items.Add(Item(CheckForUpdatesHeader, () => _ = CheckForUpdatesAsync()));
+        menu.Items.Add(Item(OpenLogsHeader, launcher.OpenLogsFolder));
+        menu.Items.Add(Item(ReportIssueHeader, () => launcher.OpenUrl(AppInfo.IssuesUrl)));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(ExitHeader, () => services.GetRequiredService<AppLifecycle>().Exit()));
         menu.Opened += (_, _) => RefreshMenuState();
@@ -84,6 +93,8 @@ public sealed class TrayIconService(
             IconSource = skin.GetClip(Domain.Pets.PetActivity.Idle).Frames[0],
             ContextMenu = menu
         };
+
+        _icon.TrayBalloonTipClicked += (_, _) => OnBalloonClicked();
 
         settings.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.BeginInvoke(RefreshMenuState);
         RefreshMenuState();
@@ -174,6 +185,49 @@ public sealed class TrayIconService(
         }
     }
 
+    /// <summary>
+    /// One quiet check at startup. Shows a balloon only when a newer release exists; being up to date, offline or
+    /// rate-limited produces no UI at all. Never throws and never blocks the caller.
+    /// </summary>
+    public async Task CheckForUpdatesQuietlyAsync()
+    {
+        try
+        {
+            var result = await services.GetRequiredService<IUpdateChecker>().CheckAsync(AppInfo.CurrentVersion).ConfigureAwait(false);
+            if (result.Outcome != UpdateOutcome.UpdateAvailable || result.ReleaseUrl is null)
+            {
+                logger.LogDebug("Startup update check: {Outcome}", result.Outcome);
+                return;
+            }
+
+            await (System.Windows.Application.Current?.Dispatcher.InvokeAsync(() => ShowUpdateBalloon(result)).Task ?? Task.CompletedTask);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Startup update check failed");
+        }
+    }
+
+    private void ShowUpdateBalloon(UpdateCheckResult result)
+    {
+        if (_icon is null)
+        {
+            return;
+        }
+
+        _pendingUpdateReleaseUrl = result.ReleaseUrl;
+        _icon.ShowBalloonTip("WorkBuddy update available", $"Version {result.Latest} is available. Click to open the download page.", BalloonIcon.Info);
+        logger.LogInformation("Update {Latest} available (current {Current}); balloon shown", result.Latest, result.Current);
+    }
+
+    private void OnBalloonClicked()
+    {
+        if (!string.IsNullOrEmpty(_pendingUpdateReleaseUrl))
+        {
+            launcher.OpenUrl(_pendingUpdateReleaseUrl);
+        }
+    }
+
     public static string DescribeUpdate(UpdateCheckResult result) => result.Outcome switch
     {
         UpdateOutcome.UpdateAvailable =>
@@ -193,7 +247,7 @@ public sealed class TrayIconService(
             var answer = MessageBox.Show(text, "WorkBuddy updates", MessageBoxButton.YesNo, MessageBoxImage.Information);
             if (answer == MessageBoxResult.Yes && result.ReleaseUrl is not null)
             {
-                Process.Start(new ProcessStartInfo(result.ReleaseUrl) { UseShellExecute = true });
+                launcher.OpenUrl(result.ReleaseUrl);
             }
         }
         else

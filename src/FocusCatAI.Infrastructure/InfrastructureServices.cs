@@ -10,6 +10,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<IAppPaths, AppPaths>();
+        services.AddSingleton<IExternalLauncher, ShellLauncher>();
         services.AddSingleton<IRandomSource, SystemRandomSource>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPetPreferences, JsonPetPreferences>();

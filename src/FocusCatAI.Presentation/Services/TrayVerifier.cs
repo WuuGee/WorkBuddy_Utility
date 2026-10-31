@@ -27,7 +27,8 @@ public sealed class TrayVerifier(IServiceProvider services)
         AppConstants.ProductName, null,
         TrayIconService.ShowCatHeader, TrayIconService.HideCatHeader, null,
         TrayIconService.OpenSettingsHeader, TrayIconService.RestartHeader, null,
-        TrayIconService.AboutHeader, TrayIconService.CheckForUpdatesHeader, null,
+        TrayIconService.AboutHeader, TrayIconService.CheckForUpdatesHeader,
+        TrayIconService.OpenLogsHeader, TrayIconService.ReportIssueHeader, null,
         TrayIconService.ExitHeader
     ];
 
@@ -112,7 +113,7 @@ public sealed class TrayVerifier(IServiceProvider services)
     {
         var headers = Tray.MenuHeaders;
         Record("Tray Startup", "Tray icon is created and visible", Tray.IsVisible, "");
-        Record("Tray Startup", "Menu is exactly: WorkBuddy, Show Cat, Hide Cat, Open Settings, Restart, About, Check for Updates, Exit",
+        Record("Tray Startup", "Menu is exactly: WorkBuddy, Show Cat, Hide Cat, Open Settings, Restart, About, Check for Updates, Open Logs Folder, Report an Issue, Exit",
             headers.SequenceEqual(ExpectedMenu), string.Join(" | ", headers.Select(h => h ?? "---")));
         Record("Tray Startup", "No Pomodoro controls in the tray",
             headers.All(h => h is null || !h.Contains("Focus", StringComparison.OrdinalIgnoreCase) && !h.Contains("Pomodoro", StringComparison.OrdinalIgnoreCase)), "");
@@ -219,6 +220,12 @@ public sealed class TrayVerifier(IServiceProvider services)
 
     private async Task UpdateCheck()
     {
+        Record("Diagnostics", "Open Logs Folder and Report an Issue exist and are enabled (not clicked: they open Explorer and a browser)",
+            Tray.FindMenuItem(TrayIconService.OpenLogsHeader) is { IsEnabled: true } && Tray.FindMenuItem(TrayIconService.ReportIssueHeader) is { IsEnabled: true }, "");
+        Record("Diagnostics", "Report an Issue targets the repository issues page over https",
+            AppInfo.IssuesUrl == AppInfo.RepositoryUrl + "/issues" && AppInfo.IssuesUrl.StartsWith("https://", StringComparison.Ordinal), AppInfo.IssuesUrl);
+        Record("Diagnostics", "The logs folder the launcher opens exists on disk", Directory.Exists(_paths.LogsDirectory), _paths.LogsDirectory);
+
         var item = Tray.FindMenuItem(TrayIconService.CheckForUpdatesHeader);
         Record("Update Check", "Check for Updates item exists and is enabled (not clicked: it shows a message box)", item is { IsEnabled: true }, "");
         try
