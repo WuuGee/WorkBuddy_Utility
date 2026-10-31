@@ -19,6 +19,7 @@ namespace FocusCatAI.Presentation.Services;
 /// </summary>
 public sealed class TrayIconService(
     ISpriteManager sprites,
+    IPetCatalog pets,
     IOptions<PetOptions> options,
     ISettingsService settings,
     IStartupManager startup,
@@ -29,6 +30,7 @@ public sealed class TrayIconService(
     public const string ShowCatHeader = "Show Cat";
     public const string HideCatHeader = "Hide Cat";
     public const string OpenSettingsHeader = "Open Settings";
+    public const string PetHeader = "Pet";
     public const string RestartHeader = "Restart WorkBuddy";
     public const string AboutHeader = "About";
     public const string CheckForUpdatesHeader = "Check for Updates";
@@ -40,6 +42,8 @@ public sealed class TrayIconService(
     private ContextMenu? _menu;
     private MenuItem? _showItem;
     private MenuItem? _hideItem;
+    private MenuItem? _petMenu;
+    private string? _iconPetId;
     private SettingsWindow? _settingsWindow;
     private AboutWindow? _aboutWindow;
     private bool _checkingForUpdates;
@@ -64,7 +68,17 @@ public sealed class TrayIconService(
 
     public void Show()
     {
-        var skin = sprites.Load(options.Value.PetId);
+        var skin = sprites.Load(pets.Resolve(settings.Current.Pet.SelectedPetId).Id);
+        _iconPetId = pets.Resolve(settings.Current.Pet.SelectedPetId).Id;
+
+        _petMenu = new MenuItem { Header = PetHeader };
+        foreach (var pet in pets.All)
+        {
+            var petId = pet.Id;
+            var petItem = new MenuItem { Header = pet.DisplayName, Tag = petId, IsCheckable = false };
+            petItem.Click += (_, _) => SelectPet(petId);
+            _petMenu.Items.Add(petItem);
+        }
 
         _showItem = Item(ShowCatHeader, () => services.GetRequiredService<SettingsApplier>().ShowPet());
         _hideItem = Item(HideCatHeader, () => services.GetRequiredService<SettingsApplier>().HidePet());
@@ -74,6 +88,7 @@ public sealed class TrayIconService(
         menu.Items.Add(new Separator());
         menu.Items.Add(_showItem);
         menu.Items.Add(_hideItem);
+        menu.Items.Add(_petMenu);
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(OpenSettingsHeader, OpenSettings));
         menu.Items.Add(Item(RestartHeader, () => services.GetRequiredService<AppLifecycle>().Restart()));
@@ -118,8 +133,38 @@ public sealed class TrayIconService(
         if (_icon is not null)
         {
             _icon.ToolTipText = BuildTooltip(petHidden, startup.GetStatus());
+            var selected = pets.Resolve(settings.Current.Pet.SelectedPetId).Id;
+            if (!string.Equals(selected, _iconPetId, StringComparison.OrdinalIgnoreCase))
+            {
+                _iconPetId = selected;
+                _icon.IconSource = sprites.Load(selected).GetClip(Domain.Pets.PetActivity.Idle).Frames[0];
+            }
+        }
+
+        if (_petMenu is not null)
+        {
+            var current = pets.Resolve(settings.Current.Pet.SelectedPetId).Id;
+            foreach (var item in _petMenu.Items.OfType<MenuItem>())
+            {
+                item.IsChecked = string.Equals(item.Tag as string, current, StringComparison.OrdinalIgnoreCase);
+            }
         }
     }
+
+    /// <summary>Selects a pet through settings, the single source of truth; every view follows <c>Changed</c>.</summary>
+    public void SelectPet(string petId)
+    {
+        settings.Update(s => s with { Pet = s.Pet with { SelectedPetId = petId } });
+        RefreshMenuState();
+    }
+
+    /// <summary>The Pet submenu items, for diagnostics: (id, header, checked).</summary>
+    public IReadOnlyList<(string Id, string Header, bool Checked)> PetMenuItems =>
+        _petMenu?.Items.OfType<MenuItem>().Select(i => ((string)i.Tag!, (string)i.Header, i.IsChecked)).ToList() ?? [];
+
+    /// <summary>Real submenu item for a pet id so diagnostics can click what a user would.</summary>
+    public MenuItem? FindPetMenuItem(string petId) =>
+        _petMenu?.Items.OfType<MenuItem>().FirstOrDefault(i => i.Tag as string == petId);
 
     /// <summary>"WorkBuddy", a status line, and the version. Windows limits tooltips to 127 characters.</summary>
     public static string BuildTooltip(bool petHidden, StartupStatus startupStatus)

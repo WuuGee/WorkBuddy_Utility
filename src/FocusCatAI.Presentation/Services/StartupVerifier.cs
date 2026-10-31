@@ -188,7 +188,12 @@ public sealed class StartupVerifier(IServiceProvider services)
 
     private void SettingsIntegration()
     {
-        var vm = new ViewModels.SettingsViewModel(Settings, services.GetRequiredService<IAppPaths>(), services.GetRequiredService<IPetPreferences>(), services.GetRequiredService<IStartupManager>(), services.GetRequiredService<IExternalLauncher>());
+        var vm = new ViewModels.SettingsViewModel(Settings,
+            services.GetRequiredService<IAppPaths>(),
+            services.GetRequiredService<IPetPreferences>(),
+            services.GetRequiredService<IStartupManager>(),
+            services.GetRequiredService<IExternalLauncher>(),
+            services.GetRequiredService<IPetCatalog>());
         var real = new RegistryRunKeyStore();
 
         vm.StartWithWindows = true;

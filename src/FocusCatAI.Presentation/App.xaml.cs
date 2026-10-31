@@ -100,6 +100,7 @@ public partial class App : System.Windows.Application
             };
 
             await _host.StartAsync();
+            _host.Services.GetRequiredService<ThemeApplier>().Start();
             _host.Services.GetRequiredService<PomodoroPetReactions>();
             var petOptions = _host.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<PetOptions>>().Value;
             if (petOptions.DebugTestMode > 0)
@@ -275,6 +276,7 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<PetViewModel>();
                 services.AddSingleton<PetWindow>();
                 services.AddSingleton<SettingsApplier>();
+                services.AddSingleton<ThemeApplier>();
                 services.AddSingleton<AppLifecycle>();
                 services.AddTransient<AboutWindow>();
                 services.AddSingleton<FocusCatAI.Application.Updates.IUpdateChecker>(sp =>

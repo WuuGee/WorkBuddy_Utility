@@ -18,9 +18,9 @@ public interface ISpriteManager
 }
 
 /// <summary>Also exposes the active pet's animations to the behavior planner.</summary>
-public sealed class ActivePetCatalog(ISpriteManager sprites, IOptions<PetOptions> options) : IAnimationCatalog
+public sealed class ActivePetCatalog(ISpriteManager sprites, ISettingsService settings, IPetCatalog pets) : IAnimationCatalog
 {
-    private PetSkin Skin => sprites.Load(options.Value.PetId);
+    private PetSkin Skin => sprites.Load(pets.Resolve(settings.Current.Pet.SelectedPetId).Id);
 
     public bool Has(PetActivity activity) => Skin.Has(activity);
 

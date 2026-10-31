@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "ginger",
+  "displayName": "Ginger Cat",
+  "frameWidth": 64,
+  "frameHeight": 64,
+  "groundOffset": 0,
+  "walkSpeed": 36,
+  "animations": {
+    "Idle":      { "sheet": "idle.png",      "frames": 4, "fps": 4,  "loop": true, "tags": ["idle", "observe"] },
+    "Sit":       { "sheet": "sit.png",       "frames": 4, "fps": 2,  "loop": true, "tags": ["sit"] },
+    "Blink":     { "sheet": "blink.png",     "frames": 4, "fps": 8,  "loop": false, "tags": ["blink"] },
+    "TailFlick": { "sheet": "tailflick.png", "frames": 6, "fps": 8,  "loop": false, "tags": ["tailflick"] },
+    "LookLeft":  { "sheet": "lookleft.png",  "frames": 6, "fps": 5,  "loop": false, "tags": ["look"] },
+    "LookRight": { "sheet": "lookright.png", "frames": 6, "fps": 5,  "loop": false, "tags": ["look"] },
+    "Groom":     { "sheet": "groom.png",     "frames": 8, "fps": 5,  "loop": true, "tags": ["groom"] },
+    "Stretch":   { "sheet": "stretch.png",   "frames": 8, "fps": 5,  "loop": false, "tags": ["stretch"] },
+    "WalkRight": { "sheet": "walk.png",     "frames": 8, "fps": 10, "loop": true },
+    "WalkLeft":  { "sheet": "walk.png",     "frames": 8, "fps": 10, "loop": true, "flipHorizontal": true },
+    "Sleep":     { "sheet": "sleep.png",     "frames": 6, "fps": 2,  "loop": true, "tags": ["sleep"] },
+    "Think":     { "sheet": "thinking.png", "frames": 4, "fps": 4,  "loop": true },
+    "Speak":     { "sheet": "speaking.png", "frames": 4, "fps": 8,  "loop": true },
+    "Happy":     { "sheet": "happy.png",    "frames": 4, "fps": 8,  "loop": true, "tags": ["play"] }
+  }
+}

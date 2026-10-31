@@ -87,3 +87,7 @@ Example: add `"Groom": { "sheet": "groom.png", "frames": 6, "fps": 6, "tags": ["
 ## Creating the default placeholders
 
 `tools/GenerateCatSprites.ps1` regenerates the placeholder cat sheets.
+
+## Built-in pets (v0.2.0-A)
+
+Built-in pets are listed in StaticPetCatalog: Cat (id cat, default), Tuxedo (id tuxedo) and Ginger (id ginger). A new pet needs a folder named after its id, a pet.json with all 14 animation keys, and a catalog entry. The selection is stored as Pet.SelectedPetId; unknown ids fall back to cat.

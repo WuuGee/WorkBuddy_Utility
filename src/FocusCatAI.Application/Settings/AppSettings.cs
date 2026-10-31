@@ -51,6 +51,10 @@ public sealed record GeneralSettings
 
     /// <summary>Placeholder for future localisation.</summary>
     public string Language { get; init; } = "en";
+
+    /// <summary>Light, Dark, or follow Windows. Unknown values in settings.json load as System.</summary>
+    [JsonConverter(typeof(ThemePreferenceConverter))]
+    public ThemePreference Theme { get; init; } = ThemePreference.System;
 }
 
 public sealed record PetSettings
@@ -60,6 +64,9 @@ public sealed record PetSettings
     public double AnimationSpeed { get; init; } = 1.0;
     public PlacementPreference Placement { get; init; } = PlacementPreference.Auto;
     public bool EnableIntroAnimation { get; init; } = true;
+
+    /// <summary>Id of the selected pet; validated against the catalog where it is used.</summary>
+    public string SelectedPetId { get; init; } = PetDefinition.DefaultId;
 }
 
 public sealed record BehaviorSettings
@@ -98,7 +105,8 @@ public static class SettingsLimits
             AnimationSpeed = double.IsFinite(settings.Pet.AnimationSpeed)
                 ? Math.Clamp(settings.Pet.AnimationSpeed, MinAnimationSpeed, MaxAnimationSpeed)
                 : 1.0,
-            Size = Enum.IsDefined(settings.Pet.Size) ? settings.Pet.Size : PetSize.Normal
+            Size = Enum.IsDefined(settings.Pet.Size) ? settings.Pet.Size : PetSize.Normal,
+            SelectedPetId = string.IsNullOrWhiteSpace(settings.Pet.SelectedPetId) ? PetDefinition.DefaultId : settings.Pet.SelectedPetId.Trim()
         },
         Behavior = settings.Behavior with
         {

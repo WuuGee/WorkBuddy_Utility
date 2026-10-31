@@ -2,7 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="WorkBuddy Settings" Width="720" Height="520" MinWidth="620" MinHeight="460"
-        WindowStartupLocation="CenterScreen" ShowInTaskbar="True" Background="#FFF7F7F9"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="True" Background="{DynamicResource Brush.Window.Background}"
+        Foreground="{DynamicResource Brush.Text.Primary}"
         FontFamily="Segoe UI" FontSize="13">
     <Window.Resources>
         <Style x:Key="SectionTitle" TargetType="TextBlock">
@@ -14,7 +15,7 @@
             <Setter Property="Margin" Value="0,0,0,12" />
         </Style>
         <Style x:Key="Hint" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#FF6B6B76" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Secondary}" />
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="Margin" Value="22,2,0,0" />
         </Style>
@@ -37,10 +38,10 @@
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
-        <Border Background="#FFEDEDF2" BorderBrush="#FFD8D8E0" BorderThickness="0,0,1,0">
+        <Border Background="{DynamicResource Brush.Sidebar.Background}" BorderBrush="{DynamicResource Brush.Sidebar.Border}" BorderThickness="0,0,1,0">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="WorkBuddy" FontSize="18" FontWeight="Bold" Margin="18,18,18,12" />
-                <TextBlock DockPanel.Dock="Bottom" x:Name="VersionLabel" Foreground="#FF6B6B76" Margin="18,8,18,14" />
+                <TextBlock DockPanel.Dock="Bottom" x:Name="VersionLabel" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="18,8,18,14" />
                 <ListBox x:Name="Categories" Background="Transparent" BorderThickness="0" SelectedIndex="0"
                          SelectionChanged="OnCategoryChanged" Margin="6,0">
                     <ListBox.ItemContainerStyle>
@@ -64,7 +65,7 @@
                 <TextBlock Style="{StaticResource SectionTitle}" Text="General" />
                 <StackPanel Style="{StaticResource Row}">
                     <CheckBox Content="Start WorkBuddy when Windows starts" IsChecked="{Binding StartWithWindows, Mode=TwoWay}" />
-                    <TextBlock Style="{StaticResource Hint}" Foreground="#FFB45309" Text="{Binding StartupStatusText}" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource Brush.Warning}" Text="{Binding StartupStatusText}" TextWrapping="Wrap" />
                 </StackPanel>
                 <StackPanel Style="{StaticResource Row}">
                     <CheckBox Content="Start minimized (tray only)" IsChecked="{Binding StartMinimized, Mode=TwoWay}" />
@@ -75,12 +76,21 @@
                     <TextBlock Style="{StaticResource Hint}" Text="Off keeps the pet above the taskbar instead of walking along it." />
                 </StackPanel>
                 <TextBlock Style="{StaticResource Label}" Text="Language" />
-                <TextBlock Text="{Binding Language}" Foreground="#FF6B6B76" />
+                <TextBlock Text="{Binding Language}" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,12" />
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Theme" />
+                    <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme, Mode=TwoWay}" Width="200" HorizontalAlignment="Left" />
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="System follows the Windows app theme and changes with it." />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel x:Name="PagePet" Visibility="Collapsed">
                 <TextBlock Style="{StaticResource SectionTitle}" Text="Pet" />
                 <CheckBox Style="{StaticResource Row}" Content="Show pet" IsChecked="{Binding ShowPet, Mode=TwoWay}" />
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Companion" />
+                    <ComboBox ItemsSource="{Binding Pets}" SelectedItem="{Binding SelectedPet, Mode=TwoWay}" DisplayMemberPath="DisplayName" Width="200" HorizontalAlignment="Left" />
+                </StackPanel>
                 <StackPanel Style="{StaticResource Row}">
                     <TextBlock Style="{StaticResource Label}" Text="Pet size" />
                     <ComboBox ItemsSource="{Binding Sizes}" SelectedItem="{Binding Size, Mode=TwoWay}" Width="200" HorizontalAlignment="Left" />

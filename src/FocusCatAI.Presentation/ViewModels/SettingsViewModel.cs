@@ -18,9 +18,11 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     private readonly IPetPreferences _preferences;
     private readonly IStartupManager _startup;
     private readonly IExternalLauncher _launcher;
+    private readonly IPetCatalog _catalog;
 
-    public SettingsViewModel(ISettingsService settings, IAppPaths paths, IPetPreferences preferences, IStartupManager startup, IExternalLauncher launcher)
+    public SettingsViewModel(ISettingsService settings, IAppPaths paths, IPetPreferences preferences, IStartupManager startup, IExternalLauncher launcher, IPetCatalog catalog)
     {
+        _catalog = catalog;
         _settings = settings;
         _paths = paths;
         _preferences = preferences;
@@ -85,8 +87,24 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     public bool StartMinimized { get => S.General.StartMinimized; set => Edit(s => s with { General = s.General with { StartMinimized = value } }); }
     public bool RunInTaskbarMode { get => S.General.RunInTaskbarMode; set => Edit(s => s with { General = s.General with { RunInTaskbarMode = value } }); }
     public string Language => "English (more languages later)";
+    public IReadOnlyList<ThemePreference> Themes { get; } = Enum.GetValues<ThemePreference>();
+    public ThemePreference Theme { get => S.General.Theme; set => Edit(s => s with { General = s.General with { Theme = value } }); }
 
     // Pet
+    public IReadOnlyList<PetDefinition> Pets => _catalog.All;
+
+    /// <summary>Selected pet; an unknown stored id shows as the default pet.</summary>
+    public PetDefinition SelectedPet
+    {
+        get => _catalog.Resolve(S.Pet.SelectedPetId);
+        set
+        {
+            if (value is not null)
+            {
+                Edit(s => s with { Pet = s.Pet with { SelectedPetId = value.Id } });
+            }
+        }
+    }
     public bool ShowPet { get => S.Pet.ShowPet; set => Edit(s => s with { Pet = s.Pet with { ShowPet = value } }); }
     public PetSize Size { get => S.Pet.Size; set => Edit(s => s with { Pet = s.Pet with { Size = value } }); }
     public double AnimationSpeed { get => S.Pet.AnimationSpeed; set => Edit(s => s with { Pet = s.Pet with { AnimationSpeed = Math.Round(value, 1) } }); }

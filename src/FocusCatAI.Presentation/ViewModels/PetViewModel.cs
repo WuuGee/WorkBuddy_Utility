@@ -30,6 +30,9 @@ public sealed partial class PetViewModel : ObservableObject
     private readonly DispatcherTimer _timer;
     private readonly Stopwatch _clock = new();
 
+    private readonly ISpriteManager _sprites;
+    private readonly IPetCatalog _catalog;
+    private string _skinId;
     private PetSkin _skin;
     private TimeSpan _lastTick;
     private TimeSpan _sinceTopmost;
@@ -55,9 +58,12 @@ public sealed partial class PetViewModel : ObservableObject
         IEnumerable<ITickable> tickables,
         IOptions<PetOptions> options,
         ISettingsService settings,
+        IPetCatalog catalog,
         ILogger<PetViewModel> logger)
     {
         _settings = settings;
+        _sprites = sprites;
+        _catalog = catalog;
         _stateMachine = stateMachine;
         _world = world;
         _layoutProvider = layoutProvider;
@@ -67,9 +73,11 @@ public sealed partial class PetViewModel : ObservableObject
         _logger = logger;
         _opacity = _options.Opacity;
         _size = settings.Current.Pet.Size;
-        _skin = sprites.Load(_options.PetId);
+        _skinId = catalog.Resolve(settings.Current.Pet.SelectedPetId).Id;
+        _skin = sprites.Load(_skinId);
 
         _stateMachine.StateChanged += (_, _) => PlayCurrentActivity();
+        settings.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.BeginInvoke(ApplySelectedPet);
         ApplyLayout();
         PlayCurrentActivity();
 
@@ -86,6 +94,7 @@ public sealed partial class PetViewModel : ObservableObject
     public double Top { get; private set; }
     public TaskbarPlacementMode Mode => _world.Layout.Mode;
     public PetSkin Skin => _skin;
+    public string PetId => _skinId;
     public event EventHandler? PositionChanged;
 
     /// <summary>Raised each frame with whether the pet can currently receive mouse input.</summary>
@@ -165,6 +174,23 @@ public sealed partial class PetViewModel : ObservableObject
         {
             _world.PetX = Application.Taskbar.TaskbarGeometry.ClampToNearestZone(zones, _world.PetX, _world.PetWidth);
         }
+    }
+
+    /// <summary>Swaps the skin in place when the selected pet changed. The PetWindow and its hooks are untouched.</summary>
+    private void ApplySelectedPet()
+    {
+        var id = _catalog.Resolve(_settings.Current.Pet.SelectedPetId).Id;
+        if (string.Equals(id, _skinId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _skin = _sprites.Load(id);
+        _skinId = id;
+        _lastLeft = double.NaN;
+        _logger.LogInformation("Pet switched to {PetId}", id);
+        ApplyLayout();
+        PlayCurrentActivity();
     }
 
     private void PlayCurrentActivity()

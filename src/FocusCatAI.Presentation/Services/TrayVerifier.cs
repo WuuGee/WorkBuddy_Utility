@@ -25,7 +25,7 @@ public sealed class TrayVerifier(IServiceProvider services)
     private static readonly string?[] ExpectedMenu =
     [
         AppConstants.ProductName, null,
-        TrayIconService.ShowCatHeader, TrayIconService.HideCatHeader, null,
+        TrayIconService.ShowCatHeader, TrayIconService.HideCatHeader, TrayIconService.PetHeader, null,
         TrayIconService.OpenSettingsHeader, TrayIconService.RestartHeader, null,
         TrayIconService.AboutHeader, TrayIconService.CheckForUpdatesHeader,
         TrayIconService.OpenLogsHeader, TrayIconService.ReportIssueHeader, null,
@@ -60,6 +60,7 @@ public sealed class TrayVerifier(IServiceProvider services)
             TrayStartup();
             await HideCat();
             await ShowCat();
+            await PetSelection();
             await SettingsLaunch();
             await AboutDialog();
             await UpdateCheck();
@@ -113,7 +114,7 @@ public sealed class TrayVerifier(IServiceProvider services)
     {
         var headers = Tray.MenuHeaders;
         Record("Tray Startup", "Tray icon is created and visible", Tray.IsVisible, "");
-        Record("Tray Startup", "Menu is exactly: WorkBuddy, Show Cat, Hide Cat, Open Settings, Restart, About, Check for Updates, Open Logs Folder, Report an Issue, Exit",
+        Record("Tray Startup", "Menu is exactly: WorkBuddy, Show Cat, Hide Cat, Pet, Open Settings, Restart, About, Check for Updates, Open Logs Folder, Report an Issue, Exit",
             headers.SequenceEqual(ExpectedMenu), string.Join(" | ", headers.Select(h => h ?? "---")));
         Record("Tray Startup", "No Pomodoro controls in the tray",
             headers.All(h => h is null || !h.Contains("Focus", StringComparison.OrdinalIgnoreCase) && !h.Contains("Pomodoro", StringComparison.OrdinalIgnoreCase)), "");
@@ -165,6 +166,33 @@ public sealed class TrayVerifier(IServiceProvider services)
         Record("Show Cat", "Tooltip returns to 'Running'", tip, Flat(Tray.Tooltip ?? string.Empty));
         var state = await WaitUntil(() => hide.IsEnabled && !show.IsEnabled, 2000);
         Record("Show Cat", "Hide Cat enabled, Show Cat disabled", state, $"show={show.IsEnabled} hide={hide.IsEnabled}");
+    }
+
+    private async Task PetSelection()
+    {
+        var pet = services.GetRequiredService<PetWindow>();
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(pet).Handle;
+        var original = Settings.Current.Pet.SelectedPetId;
+        var catalog = services.GetRequiredService<IPetCatalog>();
+        var items = Tray.PetMenuItems;
+        Record("Pet Menu", "Pet submenu lists every catalog pet", items.Select(i => i.Id).SequenceEqual(catalog.All.Select(p => p.Id)), string.Join(",", items.Select(i => i.Id)));
+        Record("Pet Menu", "Exactly one pet is checked", items.Count(i => i.Checked) == 1, "");
+
+        Click(Tray.FindPetMenuItem("tuxedo")!);
+        var switched = await WaitUntil(() => services.GetRequiredService<ViewModels.PetViewModel>().PetId == "tuxedo", 2000);
+        Record("Pet Menu", "Clicking Tuxedo swaps the live skin", switched, "");
+        Record("Pet Menu", "SelectedPetId=tuxedo is saved to settings.json", ReadSettingsFile("Pet", "SelectedPetId").GetString() == "tuxedo", "");
+        var after = Tray.PetMenuItems;
+        Record("Pet Menu", "Checkmark moves to Tuxedo only", after.Count(i => i.Checked) == 1 && after.Single(i => i.Checked).Id == "tuxedo", "");
+        Record("Pet Menu", "Same PetWindow instance and HWND (not recreated)", ReferenceEquals(pet, services.GetRequiredService<PetWindow>()) && hwnd == new System.Windows.Interop.WindowInteropHelper(pet).Handle && hwnd != IntPtr.Zero, "");
+
+        Click(Tray.FindPetMenuItem("ginger")!);
+        var ginger = await WaitUntil(() => services.GetRequiredService<ViewModels.PetViewModel>().PetId == "ginger", 2000);
+        Record("Pet Menu", "Clicking Ginger swaps the live skin", ginger, "");
+
+        Settings.Update(s => s with { Pet = s.Pet with { SelectedPetId = original } });
+        var restored = await WaitUntil(() => services.GetRequiredService<ViewModels.PetViewModel>().PetId == original, 2000);
+        Record("Pet Menu", "Original pet restored", restored, original);
     }
 
     private async Task SettingsLaunch()

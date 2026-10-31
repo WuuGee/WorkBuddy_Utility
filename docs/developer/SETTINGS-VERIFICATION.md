@@ -74,3 +74,11 @@ measured instead.
 ## Maintaining it
 
 Add a check to `SettingsVerifier` whenever a setting is added. Keep one `Record(...)` per observable behavior.
+
+## Pet selection (v0.2.0-A)
+
+The **Pet Selection** area checks: default SelectedPetId is cat; the Companion picker lists every catalog pet; choosing Ginger swaps the live skin; the PetWindow instance and HWND are unchanged; an unknown id falls back to the default pet. See PET-CATALOG.md.
+
+## Theme (v0.2.0-B)
+
+The **Theme** area checks: the picker lists System, Light and Dark; choosing Light and Dark applies live; the open Settings window resolves a different `Brush.Window.Background` after the switch (a live DynamicResource swap); the Settings window instance and HWND are unchanged; the theme is saved to settings.json; exactly one theme dictionary remains after repeated switches; System follows the Windows app theme; PetWindow is not themed or recreated. See THEMES.md.

@@ -31,10 +31,10 @@
     <AssemblyName>WorkBuddy</AssemblyName>
     <RootNamespace>FocusCatAI.Presentation</RootNamespace>
     <Product>WorkBuddy</Product>
-    <Version>0.1.1</Version>
+    <Version>0.2.0</Version>
     <Company>Qian Tong Low</Company>
     <Authors>Qian Tong Low</Authors>
-    <Copyright>Copyright © 2026 Qian Tong Low</Copyright>
+    <Copyright>Copyright &#169; 2026 Qian Tong Low</Copyright>
     <Description>WorkBuddy - a desktop companion that lives on your taskbar.</Description>
     <RepositoryUrl>https://github.com/WuuGee/WorkBuddy_Utility</RepositoryUrl>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>

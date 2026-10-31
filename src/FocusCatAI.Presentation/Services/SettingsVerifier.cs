@@ -55,6 +55,8 @@ public sealed class SettingsVerifier(IServiceProvider services)
 
             await General(vm);
             await Pet(vm, window);
+            await PetSelectionChecks(vm, window);
+            await ThemeChecks(vm, window);
             await Behavior(vm);
             await QuietHours(vm);
             Notifications(vm);
@@ -187,6 +189,75 @@ public sealed class SettingsVerifier(IServiceProvider services)
         vm.RunInTaskbarMode = true;
         var back = await WaitUntil(() => layout.Current.Mode == TaskbarPlacementMode.InTaskbar, 7000);
         Record("General", "RunInTaskbarMode=true returns pet to taskbar (live)", back, $"mode={layout.Current.Mode}");
+    }
+
+    private async Task ThemeChecks(SettingsViewModel vm, SettingsWindow? settingsWindow)
+    {
+        var applier = services.GetRequiredService<ThemeApplier>();
+        var hwnd = settingsWindow is null ? IntPtr.Zero : new System.Windows.Interop.WindowInteropHelper(settingsWindow).Handle;
+        var original = Settings.Current.General.Theme;
+
+        Func<System.Windows.Media.Color?> windowColor = () =>
+            (settingsWindow?.TryFindResource("Brush.Window.Background") as System.Windows.Media.SolidColorBrush)?.Color;
+
+        Record("Theme", "Picker lists System, Light and Dark", vm.Themes.SequenceEqual([ThemePreference.System, ThemePreference.Light, ThemePreference.Dark]), string.Join(",", vm.Themes));
+
+        vm.Theme = ThemePreference.Light;
+        var light = await WaitUntil(() => applier.Applied == EffectiveTheme.Light, 2000);
+        var lightColor = windowColor();
+        Record("Theme", "Light applies live", light && lightColor is not null, lightColor?.ToString() ?? "no color");
+
+        vm.Theme = ThemePreference.Dark;
+        var dark = await WaitUntil(() => applier.Applied == EffectiveTheme.Dark, 2000);
+        var darkColor = windowColor();
+        Record("Theme", "Dark applies live", dark && darkColor is not null, darkColor?.ToString() ?? "no color");
+        Record("Theme", "Open Settings window resolves a different background (live DynamicResource swap)", lightColor is not null && darkColor is not null && lightColor != darkColor, $"{lightColor} -> {darkColor}");
+        Record("Theme", "Settings window instance and HWND unchanged", settingsWindow is not null && settingsWindow.IsVisible && hwnd != IntPtr.Zero && hwnd == new System.Windows.Interop.WindowInteropHelper(settingsWindow).Handle, "");
+        var storedTheme = JsonDocument.Parse(File.ReadAllText(Path.Combine(services.GetRequiredService<IAppPaths>().RootDirectory, JsonSettingsService.FileName)))
+            .RootElement.GetProperty("General").GetProperty("Theme").GetString();
+        Record("Theme", "Theme is saved to settings.json", storedTheme == "Dark", storedTheme ?? "null");
+
+        for (var i = 0; i < 4; i++)
+        {
+            vm.Theme = i % 2 == 0 ? ThemePreference.Light : ThemePreference.Dark;
+            await Task.Delay(120);
+        }
+
+        Record("Theme", "Exactly one theme dictionary after repeated switches", applier.ThemeDictionaryCount == 1, $"count={applier.ThemeDictionaryCount}");
+
+        var systemLight = services.GetRequiredService<ISystemThemeProvider>().PrefersLightApps();
+        vm.Theme = ThemePreference.System;
+        var follows = await WaitUntil(() => applier.Applied == (systemLight ? EffectiveTheme.Light : EffectiveTheme.Dark), 2000);
+        Record("Theme", "System follows the Windows app theme", follows, $"windows light={systemLight}, applied={applier.Applied}");
+
+        var petWindow = services.GetRequiredService<PetWindow>();
+        Record("Theme", "PetWindow is not themed or recreated", petWindow.IsVisible && ReferenceEquals(petWindow, services.GetRequiredService<PetWindow>()), "");
+
+        Settings.Update(s => s with { General = s.General with { Theme = original } });
+        await Task.Delay(250);
+    }
+
+    private async Task PetSelectionChecks(SettingsViewModel vm, SettingsWindow? settingsWindow)
+    {
+        var petWindow = services.GetRequiredService<PetWindow>();
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(petWindow).Handle;
+        var petVm = services.GetRequiredService<PetViewModel>();
+        var catalog = services.GetRequiredService<IPetCatalog>();
+
+        Record("Pet Selection", "Default SelectedPetId is cat", Settings.Current.Pet.SelectedPetId == "cat" && vm.SelectedPet.Id == "cat", Settings.Current.Pet.SelectedPetId);
+        Record("Pet Selection", "Picker lists all catalog pets", vm.Pets.Select(p => p.Id).SequenceEqual(catalog.All.Select(p => p.Id)), string.Join(",", vm.Pets.Select(p => p.Id)));
+
+        vm.SelectedPet = vm.Pets.Single(p => p.Id == "ginger");
+        var swapped = await WaitUntil(() => petVm.PetId == "ginger", 2000);
+        Record("Pet Selection", "Choosing Ginger swaps the live skin", swapped, petVm.PetId);
+        Record("Pet Selection", "PetWindow instance and HWND unchanged", ReferenceEquals(petWindow, services.GetRequiredService<PetWindow>()) && hwnd == new System.Windows.Interop.WindowInteropHelper(petWindow).Handle && hwnd != IntPtr.Zero, "");
+
+        Settings.Update(s => s with { Pet = s.Pet with { SelectedPetId = "no-such-pet" } });
+        await Task.Delay(300);
+        Record("Pet Selection", "Unknown id falls back to the default pet", petVm.PetId == "cat" && vm.SelectedPet.Id == "cat", petVm.PetId);
+
+        Settings.Update(s => s with { Pet = s.Pet with { SelectedPetId = "cat" } });
+        await Task.Delay(200);
     }
 
     private async Task Pet(SettingsViewModel vm, SettingsWindow? settingsWindow)
