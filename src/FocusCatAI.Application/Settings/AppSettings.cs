@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using FocusCatAI.Domain.AI;
 using FocusCatAI.Domain.Pets;
 
 namespace FocusCatAI.Application.Settings;
@@ -36,6 +37,34 @@ public sealed record AppSettings
     public BehaviorSettings Behavior { get; init; } = new();
     public QuietHoursSettings QuietHours { get; init; } = new();
     public NotificationSettings Notifications { get; init; } = new();
+    public AiSettings Ai { get; init; } = new();
+}
+
+/// <summary>Local AI companion settings. Unknown device names load as Auto.</summary>
+public sealed record AiSettings(
+    bool Enabled = true,
+    [property: JsonConverter(typeof(AiDevicePreferenceConverter))] AiDevicePreference Device = AiDevicePreference.Auto);
+
+public sealed class AiDevicePreferenceConverter : System.Text.Json.Serialization.JsonConverter<AiDevicePreference>
+{
+    public override AiDevicePreference Read(ref System.Text.Json.Utf8JsonReader reader, Type typeToConvert, System.Text.Json.JsonSerializerOptions options)
+    {
+        switch (reader.TokenType)
+        {
+            case System.Text.Json.JsonTokenType.String when Enum.TryParse<AiDevicePreference>(reader.GetString(), true, out var named) && Enum.IsDefined(named):
+                return named;
+            case System.Text.Json.JsonTokenType.Number when reader.TryGetInt32(out var number) && Enum.IsDefined(typeof(AiDevicePreference), number):
+                return (AiDevicePreference)number;
+            case System.Text.Json.JsonTokenType.StartObject or System.Text.Json.JsonTokenType.StartArray:
+                reader.Skip();
+                return AiDevicePreference.Auto;
+            default:
+                return AiDevicePreference.Auto;
+        }
+    }
+
+    public override void Write(System.Text.Json.Utf8JsonWriter writer, AiDevicePreference value, System.Text.Json.JsonSerializerOptions options) =>
+        writer.WriteStringValue(value.ToString());
 }
 
 public sealed record GeneralSettings
@@ -112,6 +141,9 @@ public static class SettingsLimits
             SelectedPetId = string.IsNullOrWhiteSpace(settings.Pet.SelectedPetId) ? PetDefinition.DefaultId : settings.Pet.SelectedPetId.Trim(),
             SelectedAccessoryId = string.IsNullOrWhiteSpace(settings.Pet.SelectedAccessoryId) ? Domain.Accessories.AccessoryDefinition.NoneId : settings.Pet.SelectedAccessoryId.Trim()
         },
+        Ai = settings.Ai is null
+            ? new AiSettings()
+            : settings.Ai with { Device = Enum.IsDefined(settings.Ai.Device) ? settings.Ai.Device : AiDevicePreference.Auto },
         Behavior = settings.Behavior with
         {
             SleepDelaySeconds = Math.Clamp(settings.Behavior.SleepDelaySeconds, MinSleepDelaySeconds, MaxSleepDelaySeconds)

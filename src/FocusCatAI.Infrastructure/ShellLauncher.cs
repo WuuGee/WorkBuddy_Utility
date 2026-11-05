@@ -9,6 +9,8 @@ public sealed class ShellLauncher(IAppPaths paths, ILogger<ShellLauncher> logger
 {
     public void OpenLogsFolder() => OpenFolder(paths.LogsDirectory);
 
+    public void OpenModelsFolder() => OpenFolder(paths.ModelsDirectory);
+
     public void OpenDataFolder() => OpenFolder(paths.RootDirectory);
 
     public void OpenUrl(string url)

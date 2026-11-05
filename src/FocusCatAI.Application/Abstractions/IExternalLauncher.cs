@@ -6,6 +6,9 @@ public interface IExternalLauncher
     /// <summary>Opens the log folder in Explorer, creating it first if needed. Never throws.</summary>
     void OpenLogsFolder();
 
+    /// <summary>Opens the local AI models folder in Explorer, creating it first if needed. Never throws.</summary>
+    void OpenModelsFolder();
+
     /// <summary>Opens the data folder (settings and preferences) in Explorer. Never throws.</summary>
     void OpenDataFolder();
 

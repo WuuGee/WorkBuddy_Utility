@@ -23,6 +23,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FocusCatAI.Application\FocusCatAI.Application.csproj" />
+    <ProjectReference Include="..\..\src\FocusCatAI.AI\FocusCatAI.AI.csproj" />
     <ProjectReference Include="..\..\src\FocusCatAI.Domain\FocusCatAI.Domain.csproj" />
     <ProjectReference Include="..\..\src\FocusCatAI.Infrastructure\FocusCatAI.Infrastructure.csproj" />
   </ItemGroup>

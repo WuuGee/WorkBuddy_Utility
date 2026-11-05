@@ -3,6 +3,7 @@ using System.Data;
 using System.Windows;
 using FocusCatAI.Application;
 using FocusCatAI.Application.Abstractions;
+using FocusCatAI.AI;
 using FocusCatAI.Application.Pomodoro;
 using FocusCatAI.Infrastructure;
 using FocusCatAI.Monitoring;
@@ -278,6 +279,7 @@ public partial class App : System.Windows.Application
                 services.AddApplication();
                 services.AddInfrastructure();
                 services.AddMonitoring();
+            services.AddFocusCatAi();
 
                 services.AddSingleton<ISpriteManager, SpriteManager>();
                 services.AddSingleton<AccessoryRenderer>();
