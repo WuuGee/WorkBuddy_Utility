@@ -1,7 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using FocusCatAI.Application.Abstractions;
+using FocusCatAI.Application.Pets;
 using FocusCatAI.Application.Updates;
+using FocusCatAI.Domain.Pets;
 using FocusCatAI.Presentation.Animation;
 using FocusCatAI.Presentation.Configuration;
 using FocusCatAI.Presentation.Views;
@@ -9,7 +11,6 @@ using FocusCatAI.Shared;
 using Hardcodet.Wpf.TaskbarNotification;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace FocusCatAI.Presentation.Services;
 
@@ -20,17 +21,20 @@ namespace FocusCatAI.Presentation.Services;
 public sealed class TrayIconService(
     ISpriteManager sprites,
     IPetCatalog pets,
-    IOptions<PetOptions> options,
+    IAccessoryCatalog accessories,
     ISettingsService settings,
     IStartupManager startup,
     IServiceProvider services,
     IExternalLauncher launcher,
+    FocusCatAI.Application.Progression.IProgressionService progression,
     ILogger<TrayIconService> logger) : IDisposable
 {
+    public const string CompanionPrefix = "Companion: ";
     public const string ShowCatHeader = "Show Cat";
     public const string HideCatHeader = "Hide Cat";
     public const string OpenSettingsHeader = "Open Settings";
     public const string PetHeader = "Pet";
+    public const string AccessoryHeader = "Accessory";
     public const string RestartHeader = "Restart WorkBuddy";
     public const string AboutHeader = "About";
     public const string CheckForUpdatesHeader = "Check for Updates";
@@ -43,6 +47,8 @@ public sealed class TrayIconService(
     private MenuItem? _showItem;
     private MenuItem? _hideItem;
     private MenuItem? _petMenu;
+    private MenuItem? _accessoryMenu;
+    private MenuItem? _companionItem;
     private string? _iconPetId;
     private SettingsWindow? _settingsWindow;
     private AboutWindow? _aboutWindow;
@@ -68,16 +74,25 @@ public sealed class TrayIconService(
 
     public void Show()
     {
-        var skin = sprites.Load(pets.Resolve(settings.Current.Pet.SelectedPetId).Id);
-        _iconPetId = pets.Resolve(settings.Current.Pet.SelectedPetId).Id;
+        _iconPetId = pets.Effective(settings.Current.Pet.SelectedPetId, progression.Progress.Level).Id;
+        var skin = sprites.Load(_iconPetId);
 
         _petMenu = new MenuItem { Header = PetHeader };
         foreach (var pet in pets.All)
         {
             var petId = pet.Id;
-            var petItem = new MenuItem { Header = pet.DisplayName, Tag = petId, IsCheckable = false };
+            var petItem = new MenuItem { Header = PetUnlockPolicy.DisplayLabel(pet, progression.Progress.Level), Tag = petId, IsCheckable = false, IsEnabled = PetUnlockPolicy.IsUnlocked(pet, progression.Progress.Level) };
             petItem.Click += (_, _) => SelectPet(petId);
             _petMenu.Items.Add(petItem);
+        }
+
+        _accessoryMenu = new MenuItem { Header = AccessoryHeader };
+        foreach (var accessory in accessories.All)
+        {
+            var accessoryId = accessory.Id;
+            var accessoryItem = new MenuItem { Header = Domain.Accessories.AccessoryUnlockPolicy.DisplayLabel(accessory, progression.Progress.Level), Tag = accessoryId, IsCheckable = false, IsEnabled = Domain.Accessories.AccessoryUnlockPolicy.IsUnlocked(accessory, progression.Progress.Level) };
+            accessoryItem.Click += (_, _) => SelectAccessory(accessoryId);
+            _accessoryMenu.Items.Add(accessoryItem);
         }
 
         _showItem = Item(ShowCatHeader, () => services.GetRequiredService<SettingsApplier>().ShowPet());
@@ -85,10 +100,13 @@ public sealed class TrayIconService(
 
         var menu = new ContextMenu();
         menu.Items.Add(new MenuItem { Header = AppConstants.ProductName, IsEnabled = false, FontWeight = FontWeights.SemiBold });
+        _companionItem = new MenuItem { IsEnabled = false };
+        menu.Items.Add(_companionItem);
         menu.Items.Add(new Separator());
         menu.Items.Add(_showItem);
         menu.Items.Add(_hideItem);
         menu.Items.Add(_petMenu);
+        menu.Items.Add(_accessoryMenu);
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(OpenSettingsHeader, OpenSettings));
         menu.Items.Add(Item(RestartHeader, () => services.GetRequiredService<AppLifecycle>().Restart()));
@@ -112,6 +130,7 @@ public sealed class TrayIconService(
         _icon.TrayBalloonTipClicked += (_, _) => OnBalloonClicked();
 
         settings.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.BeginInvoke(RefreshMenuState);
+        progression.LeveledUp += (_, _) => System.Windows.Application.Current?.Dispatcher.BeginInvoke(RefreshMenuState);
         RefreshMenuState();
         logger.LogInformation("Tray icon shown");
     }
@@ -120,6 +139,10 @@ public sealed class TrayIconService(
     public void RefreshMenuState()
     {
         var petHidden = !settings.Current.Pet.ShowPet;
+        if (_companionItem is not null)
+        {
+            _companionItem.Header = DescribeCompanion(progression.Progress);
+        }
         if (_showItem is not null)
         {
             _showItem.IsEnabled = petHidden;
@@ -133,7 +156,7 @@ public sealed class TrayIconService(
         if (_icon is not null)
         {
             _icon.ToolTipText = BuildTooltip(petHidden, startup.GetStatus());
-            var selected = pets.Resolve(settings.Current.Pet.SelectedPetId).Id;
+            var selected = pets.Effective(settings.Current.Pet.SelectedPetId, progression.Progress.Level).Id;
             if (!string.Equals(selected, _iconPetId, StringComparison.OrdinalIgnoreCase))
             {
                 _iconPetId = selected;
@@ -143,13 +166,33 @@ public sealed class TrayIconService(
 
         if (_petMenu is not null)
         {
-            var current = pets.Resolve(settings.Current.Pet.SelectedPetId).Id;
+            var current = pets.Effective(settings.Current.Pet.SelectedPetId, progression.Progress.Level).Id;
+            var level = progression.Progress.Level;
             foreach (var item in _petMenu.Items.OfType<MenuItem>())
             {
+                var def = pets.Resolve(item.Tag as string);
+                item.Header = PetUnlockPolicy.DisplayLabel(def, level);
+                item.IsEnabled = PetUnlockPolicy.IsUnlocked(def, level);
+                item.IsChecked = string.Equals(item.Tag as string, current, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+        if (_accessoryMenu is not null)
+        {
+            var level = progression.Progress.Level;
+            var current = Application.Accessories.AccessorySelection.Effective(accessories, settings.Current.Pet.SelectedAccessoryId, level).Id;
+            foreach (var item in _accessoryMenu.Items.OfType<MenuItem>())
+            {
+                var def = accessories.Resolve(item.Tag as string);
+                item.Header = Domain.Accessories.AccessoryUnlockPolicy.DisplayLabel(def, level);
+                item.IsEnabled = Domain.Accessories.AccessoryUnlockPolicy.IsUnlocked(def, level);
                 item.IsChecked = string.Equals(item.Tag as string, current, StringComparison.OrdinalIgnoreCase);
             }
         }
     }
+
+    /// <summary>The read-only status line, e.g. <c>Companion: Lv. 1 (0 / 50 XP)</c>.</summary>
+    public static string DescribeCompanion(Domain.Progression.LevelProgress p) =>
+        p.IsMax ? $"{CompanionPrefix}Lv. {p.Level} (MAX)" : $"{CompanionPrefix}Lv. {p.Level} ({p.CurrentLevelXp} / {p.NextLevelXp} XP)";
 
     /// <summary>Selects a pet through settings, the single source of truth; every view follows <c>Changed</c>.</summary>
     public void SelectPet(string petId)
@@ -161,6 +204,21 @@ public sealed class TrayIconService(
     /// <summary>The Pet submenu items, for diagnostics: (id, header, checked).</summary>
     public IReadOnlyList<(string Id, string Header, bool Checked)> PetMenuItems =>
         _petMenu?.Items.OfType<MenuItem>().Select(i => ((string)i.Tag!, (string)i.Header, i.IsChecked)).ToList() ?? [];
+
+    /// <summary>Selects an accessory through settings, the single source of truth; every view follows <c>Changed</c>.</summary>
+    public void SelectAccessory(string accessoryId)
+    {
+        settings.Update(s => s with { Pet = s.Pet with { SelectedAccessoryId = accessoryId } });
+        RefreshMenuState();
+    }
+
+    /// <summary>The Accessory submenu items, for diagnostics: (id, header, checked, enabled).</summary>
+    public IReadOnlyList<(string Id, string Header, bool Checked, bool Enabled)> AccessoryMenuItems =>
+        _accessoryMenu?.Items.OfType<MenuItem>().Select(i => ((string)i.Tag!, (string)i.Header, i.IsChecked, i.IsEnabled)).ToList() ?? [];
+
+    /// <summary>Real submenu item for an accessory id so diagnostics can click what a user would.</summary>
+    public MenuItem? FindAccessoryMenuItem(string accessoryId) =>
+        _accessoryMenu?.Items.OfType<MenuItem>().FirstOrDefault(i => i.Tag as string == accessoryId);
 
     /// <summary>Real submenu item for a pet id so diagnostics can click what a user would.</summary>
     public MenuItem? FindPetMenuItem(string petId) =>

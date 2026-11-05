@@ -28,7 +28,7 @@ interrupted, delete that file and run again.
 ## Output
 
 `%LOCALAPPDATA%\WorkBuddy\tray-verification.log`: one `[PASS]`/`[FAIL]` line per check, a per-area summary, and
-`OVERALL: PASS (0 failed check(s) of 70)`.
+`OVERALL: PASS (0 failed check(s) of 80)`.
 
 ## What it checks
 
@@ -58,4 +58,4 @@ interrupted, delete that file and run again.
 
 ## Pet submenu (v0.2.0-A)
 
-The menu now has a **Pet** submenu after Hide Cat (70 checks in total). The **Pet Menu** area checks: every catalog pet is listed; exactly one is checked; clicking Tuxedo or Ginger swaps the live skin; SelectedPetId is saved to settings.json; the checkmark moves; the PetWindow HWND is unchanged; the original pet is restored.
+The menu now has a **Pet** submenu after Hide Cat (80 checks in total as of v0.3.0, which adds the Pet submenu and progression/accessory entries). The **Pet Menu** area checks: every catalog pet is listed; exactly one is checked; clicking Tuxedo or Ginger swaps the live skin; SelectedPetId is saved to settings.json; the checkmark moves; the PetWindow HWND is unchanged; the original pet is restored.

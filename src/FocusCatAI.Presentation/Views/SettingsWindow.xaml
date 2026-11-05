@@ -82,6 +82,40 @@
                     <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme, Mode=TwoWay}" Width="200" HorizontalAlignment="Left" />
                     <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="System follows the Windows app theme and changes with it." />
                 </StackPanel>
+                <StackPanel x:Name="CompanionProgress" Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Companion progress" />
+                    <TextBlock x:Name="LevelText" Text="{Binding LevelText, Mode=OneWay}" Foreground="{DynamicResource Brush.Text.Primary}" FontWeight="SemiBold" />
+                    <ProgressBar x:Name="XpBar" Minimum="0" Maximum="1" Value="{Binding ProgressFraction, Mode=OneWay}" Width="260" Margin="0,6,0,4" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="XpText" Text="{Binding XpText, Mode=OneWay}" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                    <TextBlock x:Name="CompanionshipText" Text="{Binding CompanionshipTimeText, Mode=OneWay}" Foreground="{DynamicResource Brush.Text.Secondary}" />
+                </StackPanel>
+                <StackPanel x:Name="AchievementsCard" Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Achievements" />
+                    <TextBlock x:Name="AchievementSummaryText" Text="{Binding AchievementSummary, Mode=OneWay}" Foreground="{DynamicResource Brush.Text.Secondary}" Margin="0,0,0,6" />
+                    <ItemsControl x:Name="AchievementList" ItemsSource="{Binding Achievements}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,6">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsUnlocked}" Value="False">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Disabled}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Foreground="{DynamicResource Brush.Text.Secondary}">
+                                        <Run Text="{Binding Description, Mode=OneWay}" /><Run Text="  " /><Run Text="{Binding Status, Mode=OneWay}" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </StackPanel>
 
             <StackPanel x:Name="PagePet" Visibility="Collapsed">
@@ -89,7 +123,25 @@
                 <CheckBox Style="{StaticResource Row}" Content="Show pet" IsChecked="{Binding ShowPet, Mode=TwoWay}" />
                 <StackPanel Style="{StaticResource Row}">
                     <TextBlock Style="{StaticResource Label}" Text="Companion" />
-                    <ComboBox ItemsSource="{Binding Pets}" SelectedItem="{Binding SelectedPet, Mode=TwoWay}" DisplayMemberPath="DisplayName" Width="200" HorizontalAlignment="Left" />
+                    <ComboBox x:Name="CompanionPicker" ItemsSource="{Binding Pets}" SelectedItem="{Binding SelectedPet, Mode=TwoWay}" DisplayMemberPath="Label" Width="240" HorizontalAlignment="Left">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                                <Setter Property="IsEnabled" Value="{Binding IsUnlocked}" />
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="Spend time together to unlock more companions." />
+                </StackPanel>
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Accessory" />
+                    <ComboBox x:Name="AccessoryPicker" ItemsSource="{Binding Accessories}" SelectedItem="{Binding SelectedAccessory, Mode=TwoWay}" DisplayMemberPath="Label" Width="240" HorizontalAlignment="Left">
+                        <ComboBox.ItemContainerStyle>
+                            <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                                <Setter Property="IsEnabled" Value="{Binding IsUnlocked}" />
+                            </Style>
+                        </ComboBox.ItemContainerStyle>
+                    </ComboBox>
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" Text="Accessories unlock as your companion levels up." />
                 </StackPanel>
                 <StackPanel Style="{StaticResource Row}">
                     <TextBlock Style="{StaticResource Label}" Text="Pet size" />

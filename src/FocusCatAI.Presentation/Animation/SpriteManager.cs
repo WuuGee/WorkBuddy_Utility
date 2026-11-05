@@ -18,9 +18,9 @@ public interface ISpriteManager
 }
 
 /// <summary>Also exposes the active pet's animations to the behavior planner.</summary>
-public sealed class ActivePetCatalog(ISpriteManager sprites, ISettingsService settings, IPetCatalog pets) : IAnimationCatalog
+public sealed class ActivePetCatalog(ISpriteManager sprites, ISettingsService settings, IPetCatalog pets, FocusCatAI.Application.Progression.IProgressionService progression) : IAnimationCatalog
 {
-    private PetSkin Skin => sprites.Load(pets.Resolve(settings.Current.Pet.SelectedPetId).Id);
+    private PetSkin Skin => sprites.Load(FocusCatAI.Application.Pets.PetSelection.Effective(pets, settings.Current.Pet.SelectedPetId, progression.Progress.Level).Id);
 
     public bool Has(PetActivity activity) => Skin.Has(activity);
 

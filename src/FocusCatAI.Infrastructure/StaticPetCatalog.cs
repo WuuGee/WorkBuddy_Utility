@@ -9,8 +9,8 @@ public sealed class StaticPetCatalog : IPetCatalog
     public IReadOnlyList<PetDefinition> All { get; } =
     [
         new(PetDefinition.DefaultId, "Cream Cat"),
-        new("tuxedo", "Tuxedo Cat"),
-        new("ginger", "Ginger Cat")
+        new("tuxedo", "Tuxedo Cat", 2),
+        new("ginger", "Ginger Cat", 3)
     ];
 
     public PetDefinition Default => All[0];

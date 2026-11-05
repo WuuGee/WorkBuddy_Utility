@@ -67,6 +67,9 @@ public sealed record PetSettings
 
     /// <summary>Id of the selected pet; validated against the catalog where it is used.</summary>
     public string SelectedPetId { get; init; } = PetDefinition.DefaultId;
+
+    /// <summary>Id of the selected accessory; unknown or still-locked ids show no accessory without rewriting this value.</summary>
+    public string SelectedAccessoryId { get; init; } = Domain.Accessories.AccessoryDefinition.NoneId;
 }
 
 public sealed record BehaviorSettings
@@ -106,7 +109,8 @@ public static class SettingsLimits
                 ? Math.Clamp(settings.Pet.AnimationSpeed, MinAnimationSpeed, MaxAnimationSpeed)
                 : 1.0,
             Size = Enum.IsDefined(settings.Pet.Size) ? settings.Pet.Size : PetSize.Normal,
-            SelectedPetId = string.IsNullOrWhiteSpace(settings.Pet.SelectedPetId) ? PetDefinition.DefaultId : settings.Pet.SelectedPetId.Trim()
+            SelectedPetId = string.IsNullOrWhiteSpace(settings.Pet.SelectedPetId) ? PetDefinition.DefaultId : settings.Pet.SelectedPetId.Trim(),
+            SelectedAccessoryId = string.IsNullOrWhiteSpace(settings.Pet.SelectedAccessoryId) ? Domain.Accessories.AccessoryDefinition.NoneId : settings.Pet.SelectedAccessoryId.Trim()
         },
         Behavior = settings.Behavior with
         {

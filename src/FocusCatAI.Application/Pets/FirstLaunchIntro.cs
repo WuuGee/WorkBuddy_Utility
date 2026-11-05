@@ -1,5 +1,4 @@
 using FocusCatAI.Application.Abstractions;
-using FocusCatAI.Application.Abstractions;
 using FocusCatAI.Application.Taskbar;
 using FocusCatAI.Domain.Pets;
 using FocusCatAI.Domain.Taskbar;

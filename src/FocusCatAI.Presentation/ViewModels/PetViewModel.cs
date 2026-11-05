@@ -4,6 +4,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using FocusCatAI.Application.Abstractions;
+using FocusCatAI.Application.Accessories;
+using FocusCatAI.Application.Pets;
 using FocusCatAI.Domain.Pets;
 using FocusCatAI.Domain.Taskbar;
 using FocusCatAI.Presentation.Animation;
@@ -25,6 +27,8 @@ public sealed partial class PetViewModel : ObservableObject
     private readonly IReadOnlyList<ITickable> _tickables;
     private readonly PetOptions _options;
     private readonly ISettingsService _settings;
+    private readonly FocusCatAI.Application.Progression.IProgressionService _progression;
+    private string? _lockedFallbackLogged;
     private readonly ILogger<PetViewModel> _logger;
     private readonly SpriteAnimator _animator = new();
     private readonly DispatcherTimer _timer;
@@ -48,6 +52,15 @@ public sealed partial class PetViewModel : ObservableObject
     [ObservableProperty] private double _width = 64;
     [ObservableProperty] private double _height = 64;
     [ObservableProperty] private bool _flipped;
+    [ObservableProperty] private ImageSource? _accessorySource;
+    [ObservableProperty] private double _accessoryX;
+    [ObservableProperty] private double _accessoryY;
+    [ObservableProperty] private double _accessoryWidth;
+    [ObservableProperty] private double _accessoryHeight;
+
+    private readonly IAccessoryCatalog _accessories;
+    private readonly AccessoryRenderer _accessoryRenderer;
+    private string? _accessoryFallbackLogged;
 
     public PetViewModel(
         IPetStateMachine stateMachine,
@@ -59,8 +72,14 @@ public sealed partial class PetViewModel : ObservableObject
         IOptions<PetOptions> options,
         ISettingsService settings,
         IPetCatalog catalog,
+        FocusCatAI.Application.Progression.IProgressionService progression,
+        IAccessoryCatalog accessories,
+        AccessoryRenderer accessoryRenderer,
         ILogger<PetViewModel> logger)
     {
+        _accessories = accessories;
+        _accessoryRenderer = accessoryRenderer;
+        _progression = progression;
         _settings = settings;
         _sprites = sprites;
         _catalog = catalog;
@@ -73,11 +92,12 @@ public sealed partial class PetViewModel : ObservableObject
         _logger = logger;
         _opacity = _options.Opacity;
         _size = settings.Current.Pet.Size;
-        _skinId = catalog.Resolve(settings.Current.Pet.SelectedPetId).Id;
+        _skinId = EffectivePetId();
         _skin = sprites.Load(_skinId);
 
         _stateMachine.StateChanged += (_, _) => PlayCurrentActivity();
         settings.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.BeginInvoke(ApplySelectedPet);
+        progression.Changed += (_, _) => System.Windows.Application.Current?.Dispatcher.BeginInvoke(ApplySelectedPet);
         ApplyLayout();
         PlayCurrentActivity();
 
@@ -126,6 +146,7 @@ public sealed partial class PetViewModel : ObservableObject
     public void BeginDrag()
     {
         _dragging = true;
+        _progression.RecordInteraction();
         _stateMachine.Trigger(PetTrigger.UserInteracted);
     }
 
@@ -177,9 +198,25 @@ public sealed partial class PetViewModel : ObservableObject
     }
 
     /// <summary>Swaps the skin in place when the selected pet changed. The PetWindow and its hooks are untouched.</summary>
+    // A selected pet that is still locked shows the default pet; settings.json is left as the user set it.
+    private string EffectivePetId()
+    {
+        var stored = _settings.Current.Pet.SelectedPetId;
+        var effective = _catalog.Effective(stored, _progression.Progress.Level);
+        if (!string.Equals(_catalog.Resolve(stored).Id, effective.Id, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(_lockedFallbackLogged, stored, StringComparison.OrdinalIgnoreCase))
+        {
+            _lockedFallbackLogged = stored;
+            _logger.LogInformation("Selected pet {PetId} is locked at level {Level}; showing {Fallback}", stored, _progression.Progress.Level, effective.Id);
+        }
+
+        return effective.Id;
+    }
+
     private void ApplySelectedPet()
     {
-        var id = _catalog.Resolve(_settings.Current.Pet.SelectedPetId).Id;
+        UpdateAccessory();
+        var id = EffectivePetId();
         if (string.Equals(id, _skinId, StringComparison.OrdinalIgnoreCase))
         {
             return;
@@ -199,6 +236,27 @@ public sealed partial class PetViewModel : ObservableObject
         _animator.Play(clip);
         CurrentFrame = _animator.CurrentFrame;
         Flipped = clip.FlipHorizontal;
+        UpdateAccessory();
+    }
+
+    // Unflipped 64x64 frame coordinates; the window flips pet and accessory together through one shared parent transform.
+    private void UpdateAccessory()
+    {
+        var stored = _settings.Current.Pet.SelectedAccessoryId;
+        var effective = FocusCatAI.Application.Accessories.AccessorySelection.Effective(_accessories, stored, _progression.Progress.Level);
+        if (!string.Equals(_accessories.Resolve(stored).Id, effective.Id, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(_accessoryFallbackLogged, stored, StringComparison.OrdinalIgnoreCase))
+        {
+            _accessoryFallbackLogged = stored;
+            _logger.LogInformation("Selected accessory {AccessoryId} is locked at level {Level}; showing none", stored, _progression.Progress.Level);
+        }
+
+        var visual = _accessoryRenderer.Resolve(effective.Id, _stateMachine.Activity.Name, _animator.FrameIndex);
+        AccessorySource = visual.Source;
+        AccessoryX = visual.X;
+        AccessoryY = visual.Y;
+        AccessoryWidth = visual.Width;
+        AccessoryHeight = visual.Height;
     }
 
     private void OnTick(object? sender, EventArgs e)
@@ -224,6 +282,7 @@ public sealed partial class PetViewModel : ObservableObject
 
         _animator.Advance(dt, _settings.Current.Pet.AnimationSpeed);
         CurrentFrame = _animator.CurrentFrame;
+        UpdateAccessory();
 
         if (!_dragging)
         {

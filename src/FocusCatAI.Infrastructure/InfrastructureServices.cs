@@ -14,6 +14,7 @@ public static class DependencyInjection
         services.AddSingleton<IRandomSource, SystemRandomSource>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPetCatalog, StaticPetCatalog>();
+        services.AddSingleton<IAccessoryCatalog, StaticAccessoryCatalog>();
         services.AddSingleton<ISystemThemeProvider, Theme.WindowsSystemThemeProvider>();
         services.AddSingleton<IPetPreferences, JsonPetPreferences>();
         services.AddSingleton<ISettingsService, JsonSettingsService>();

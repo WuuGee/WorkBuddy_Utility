@@ -24,8 +24,8 @@ public sealed class TrayVerifier(IServiceProvider services)
 {
     private static readonly string?[] ExpectedMenu =
     [
-        AppConstants.ProductName, null,
-        TrayIconService.ShowCatHeader, TrayIconService.HideCatHeader, TrayIconService.PetHeader, null,
+        AppConstants.ProductName, TrayIconService.CompanionPrefix + "*", null,
+        TrayIconService.ShowCatHeader, TrayIconService.HideCatHeader, TrayIconService.PetHeader, TrayIconService.AccessoryHeader, null,
         TrayIconService.OpenSettingsHeader, TrayIconService.RestartHeader, null,
         TrayIconService.AboutHeader, TrayIconService.CheckForUpdatesHeader,
         TrayIconService.OpenLogsHeader, TrayIconService.ReportIssueHeader, null,
@@ -110,12 +110,31 @@ public sealed class TrayVerifier(IServiceProvider services)
         }
     }
 
+    private static bool MenuMatches(IReadOnlyList<string?> headers) =>
+        headers.Select(h => h is not null && h.StartsWith(TrayIconService.CompanionPrefix, StringComparison.Ordinal) ? TrayIconService.CompanionPrefix + "*" : h)
+            .SequenceEqual(ExpectedMenu);
+
+    private void CompanionLine()
+    {
+        var progression = services.GetRequiredService<FocusCatAI.Application.Progression.IProgressionService>();
+        var expected = TrayIconService.DescribeCompanion(progression.Progress);
+        var headers = Tray.MenuHeaders;
+        Record("Tray Startup", "Companion status line sits right under the product header", headers.Count > 1 && headers[0] == AppConstants.ProductName && headers[1] == expected, headers.Count > 1 ? headers[1] ?? "null" : "none");
+        var item = Tray.FindMenuItem(expected);
+        Record("Tray Startup", "Companion status line is read-only (disabled)", item is not null && !item.IsEnabled, expected);
+        Record("Tray Startup", "Companion line format is 'Companion: Lv. N (x / y XP)'", System.Text.RegularExpressions.Regex.IsMatch(expected, @"^Companion: Lv\. \d+ \((\d+ / \d+ XP|MAX)\)$"), expected);
+        Record("Tray Startup", "Level-up and max formats",
+            TrayIconService.DescribeCompanion(FocusCatAI.Domain.Progression.LevelCurve.Describe(0)) == "Companion: Lv. 1 (0 / 50 XP)" &&
+            TrayIconService.DescribeCompanion(FocusCatAI.Domain.Progression.LevelCurve.Describe(100000)) == "Companion: Lv. 50 (MAX)", "");
+    }
+
     private void TrayStartup()
     {
+        CompanionLine();
         var headers = Tray.MenuHeaders;
         Record("Tray Startup", "Tray icon is created and visible", Tray.IsVisible, "");
         Record("Tray Startup", "Menu is exactly: WorkBuddy, Show Cat, Hide Cat, Pet, Open Settings, Restart, About, Check for Updates, Open Logs Folder, Report an Issue, Exit",
-            headers.SequenceEqual(ExpectedMenu), string.Join(" | ", headers.Select(h => h ?? "---")));
+            MenuMatches(headers), string.Join(" | ", headers.Select(h => h ?? "---")));
         Record("Tray Startup", "No Pomodoro controls in the tray",
             headers.All(h => h is null || !h.Contains("Focus", StringComparison.OrdinalIgnoreCase) && !h.Contains("Pomodoro", StringComparison.OrdinalIgnoreCase)), "");
 
@@ -177,6 +196,26 @@ public sealed class TrayVerifier(IServiceProvider services)
         var items = Tray.PetMenuItems;
         Record("Pet Menu", "Pet submenu lists every catalog pet", items.Select(i => i.Id).SequenceEqual(catalog.All.Select(p => p.Id)), string.Join(",", items.Select(i => i.Id)));
         Record("Pet Menu", "Exactly one pet is checked", items.Count(i => i.Checked) == 1, "");
+
+        // Locked state first. Diagnostics run on a scratch progression, so this starts at Lv. 1 (0 XP).
+        var progression = services.GetRequiredService<FocusCatAI.Application.Progression.IProgressionService>();
+        Record("Pet Menu", "Verifier starts at Lv. 1 in the scratch progression", progression.Progress.Level == 1, $"level={progression.Progress.Level}");
+        var tuxedoItem = Tray.FindPetMenuItem("tuxedo")!;
+        var gingerItem = Tray.FindPetMenuItem("ginger")!;
+        Record("Pet Menu", "Cream Cat is enabled at Lv. 1", Tray.FindPetMenuItem("cat")!.IsEnabled, "");
+        Record("Pet Menu", "Tuxedo Cat is disabled and shows 'Unlocks at Lv. 2'", !tuxedoItem.IsEnabled && (string)tuxedoItem.Header == "Tuxedo Cat (Unlocks at Lv. 2)", (string)tuxedoItem.Header);
+        Record("Pet Menu", "Ginger Cat is disabled and shows 'Unlocks at Lv. 3'", !gingerItem.IsEnabled && (string)gingerItem.Header == "Ginger Cat (Unlocks at Lv. 3)", (string)gingerItem.Header);
+
+        // Reach Lv. 3 (150 XP): both unlock live in the open menu.
+        for (var i = 0; i < 150; i++)
+        {
+            progression.RecordCompanionshipTick();
+        }
+
+        await Task.Delay(400);
+        Tray.RefreshMenuState();
+        Record("Pet Menu", "150 XP reaches Lv. 3", progression.Progress.Level == 3, $"level={progression.Progress.Level}");
+        Record("Pet Menu", "Tuxedo and Ginger unlock live with plain names", tuxedoItem.IsEnabled && gingerItem.IsEnabled && (string)tuxedoItem.Header == "Tuxedo Cat" && (string)gingerItem.Header == "Ginger Cat", $"{tuxedoItem.Header} / {gingerItem.Header}");
 
         Click(Tray.FindPetMenuItem("tuxedo")!);
         var switched = await WaitUntil(() => services.GetRequiredService<ViewModels.PetViewModel>().PetId == "tuxedo", 2000);
@@ -286,7 +325,7 @@ public sealed class TrayVerifier(IServiceProvider services)
             Record("Restart", "Replacement is a different process", Environment.ProcessId != pid1, $"old={pid1} new={Environment.ProcessId}");
             Record("Restart", "Old process has exited", !ProcessAlive(pid1), "");
             Record("Restart", "Exactly one WorkBuddy process is running", Process.GetProcessesByName("WorkBuddy").Length == 1, $"count={Process.GetProcessesByName("WorkBuddy").Length}");
-            Record("Restart", "Tray icon is back and the menu is complete", Tray.IsVisible && Tray.MenuHeaders.SequenceEqual(ExpectedMenu), "");
+            Record("Restart", "Tray icon is back and the menu is complete", Tray.IsVisible && MenuMatches(Tray.MenuHeaders), "");
 
             var originalShow = bool.Parse(state.GetValueOrDefault("originalShowPet", "True"));
             var originalSpeed = double.Parse(state.GetValueOrDefault("originalSpeed", "1"), CultureInfo.InvariantCulture);

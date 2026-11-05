@@ -20,7 +20,7 @@ unsigned app. Choose **More info**, then **Run anyway**. Each release publishes 
 you can confirm the file is genuine. To check it, run this in PowerShell and compare the result with the `.sha256` file:
 
 ```powershell
-Get-FileHash .\WorkBuddy-Setup-0.2.0.exe -Algorithm SHA256
+Get-FileHash .\WorkBuddy-Setup-0.3.0.exe -Algorithm SHA256
 ```
 
 ## Using WorkBuddy
@@ -28,6 +28,13 @@ Get-FileHash .\WorkBuddy-Setup-0.2.0.exe -Algorithm SHA256
 Right-click the cat's tray icon (near the clock) for Show Cat, Hide Cat, Pet, Settings, Restart, About, Check for Updates and Exit.
 
 Choose your companion (Cream Cat, Tuxedo Cat or Ginger Cat) from the **Pet** submenu or Settings > Pet, and pick a Light, Dark or System theme in Settings > General. Both apply immediately.
+### New in v0.3.0
+
+- **Passive XP & Levels:** your companion earns XP quietly while it is visible. No dialogs; a level-up plays a happy animation.
+- **Level-Gated Pet Unlocks:** Cream Cat at Lv. 1, Tuxedo Cat at Lv. 2, Ginger Cat at Lv. 3.
+- **8 Quiet Achievements** that unlock silently as you spend time together.
+- **3 Unlockable Pet Accessories:** Red Bowtie, Party Hat and Star Halo.
+
 Updates are manual: use **Check for Updates** to see whether a newer version is available.
 
 ## Uninstall

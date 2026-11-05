@@ -1,4 +1,4 @@
-<Window x:Class="FocusCatAI.Presentation.Views.PetWindow"
+﻿<Window x:Class="FocusCatAI.Presentation.Views.PetWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="WorkBuddy"
@@ -8,11 +8,10 @@
         Opacity="{Binding Opacity}"
         Width="{Binding Width}" Height="{Binding Height}"
         MouseLeftButtonDown="OnMouseLeftButtonDown">
-    <Image x:Name="PetImage" Source="{Binding CurrentFrame}"
-           RenderOptions.BitmapScalingMode="NearestNeighbor"
-           RenderTransformOrigin="0.5,0.5">
-        <Image.Style>
-            <Style TargetType="Image">
+    <!-- Pet and accessory share one 64x64 canvas inside one flipped parent, so WalkLeft mirrors both together and nothing is flipped twice. -->
+    <Viewbox Stretch="Fill" RenderTransformOrigin="0.5,0.5">
+        <Viewbox.Style>
+            <Style TargetType="Viewbox">
                 <Setter Property="RenderTransform">
                     <Setter.Value>
                         <ScaleTransform ScaleX="1" />
@@ -28,6 +27,14 @@
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
-        </Image.Style>
-    </Image>
+        </Viewbox.Style>
+        <Canvas Width="64" Height="64">
+            <Image x:Name="PetImage" Source="{Binding CurrentFrame}" Width="64" Height="64"
+                   RenderOptions.BitmapScalingMode="NearestNeighbor" />
+            <Image x:Name="AccessoryImage" Source="{Binding AccessorySource}"
+                   Canvas.Left="{Binding AccessoryX}" Canvas.Top="{Binding AccessoryY}"
+                   Width="{Binding AccessoryWidth}" Height="{Binding AccessoryHeight}"
+                   RenderOptions.BitmapScalingMode="NearestNeighbor" IsHitTestVisible="False" />
+        </Canvas>
+    </Viewbox>
 </Window>

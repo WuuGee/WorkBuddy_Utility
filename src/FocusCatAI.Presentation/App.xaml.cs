@@ -82,6 +82,12 @@ public partial class App : System.Windows.Application
                 System.IO.Path.Combine(localData, AppConstants.LegacyAppName),
                 System.IO.Path.Combine(localData, AppConstants.AppName));
 
+            if (launch.VerifySettings || launch.VerifyStartup || launch.TrayPhase > 0)
+            {
+                // Phase 2 and 3 of the tray run continue the scratch state that phase 1 created.
+                VerifierScratch.Prepare(fresh: launch.TrayPhase <= 1);
+            }
+
             _host = BuildHost();
             var logger = _host.Services.GetRequiredService<ILogger<App>>();
             logger.LogInformation("{Product} starting (legacy files migrated: {Migrated}, autostart: {Autostart})", AppConstants.ProductName, migrated, launch.Autostart);
@@ -119,6 +125,10 @@ public partial class App : System.Windows.Application
             _host.Services.GetRequiredService<SettingsApplier>()
                 .Start(_host.Services.GetRequiredService<ISettingsService>().Current.General.StartMinimized);
             _host.Services.GetRequiredService<TrayIconService>().Show();
+            if (!launch.VerifySettings && !launch.VerifyStartup && launch.TrayPhase == 0)
+            {
+                _host.Services.GetRequiredService<ProgressionCoordinator>().Start();
+            }
 
             _channel = _host.Services.GetRequiredService<SingleInstanceChannel>();
             _channel.StartListening(OnSecondLaunch);
@@ -211,8 +221,10 @@ public partial class App : System.Windows.Application
             _channel?.Dispose();
             _host.Services.GetService<IPetPreferences>()?.Save();
             _host.Services.GetService<TrayIconService>()?.Dispose();
+            _host.Services.GetService<ProgressionCoordinator>()?.Dispose();
+            _host.Services.GetService<FocusCatAI.Application.Progression.IProgressionService>()?.Flush();
 
-            // Settings are written on every change (JsonSettingsService), so there is nothing further to flush.
+            // Settings are written on every change (JsonSettingsService); progression is flushed above.
             // StopAsync runs on a pool thread so it can never wait on the UI thread that is blocked here.
             try
             {
@@ -268,11 +280,19 @@ public partial class App : System.Windows.Application
                 services.AddMonitoring();
 
                 services.AddSingleton<ISpriteManager, SpriteManager>();
+                services.AddSingleton<AccessoryRenderer>();
                 services.AddSingleton<IAnimationCatalog, ActivePetCatalog>();
                 services.AddSingleton<TaskbarLayoutService>();
                 services.AddSingleton<ITaskbarLayoutProvider>(sp => sp.GetRequiredService<TaskbarLayoutService>());
                 services.AddHostedService(sp => sp.GetRequiredService<TaskbarLayoutService>());
                 services.AddSingleton<ISpeechPresenter, SpeechBubblePresenter>();
+                services.AddSingleton(TimeProvider.System);
+                services.AddSingleton<FocusCatAI.Application.Progression.IProgressionStore>(sp =>
+                    new FocusCatAI.Infrastructure.JsonProgressionStore(
+                        VerifierScratch.ProgressionDirectory is { } scratch ? new VerifierScratch.ScratchPaths(scratch) : sp.GetRequiredService<IAppPaths>(),
+                        sp.GetRequiredService<ILogger<FocusCatAI.Infrastructure.JsonProgressionStore>>()));
+                services.AddSingleton<FocusCatAI.Application.Progression.IProgressionService, FocusCatAI.Application.Progression.ProgressionService>();
+                services.AddSingleton<ProgressionCoordinator>();
                 services.AddSingleton<PetViewModel>();
                 services.AddSingleton<PetWindow>();
                 services.AddSingleton<SettingsApplier>();

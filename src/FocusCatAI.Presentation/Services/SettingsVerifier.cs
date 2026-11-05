@@ -57,6 +57,7 @@ public sealed class SettingsVerifier(IServiceProvider services)
             await Pet(vm, window);
             await PetSelectionChecks(vm, window);
             await ThemeChecks(vm, window);
+            await ProgressionChecks(vm, window);
             await Behavior(vm);
             await QuietHours(vm);
             Notifications(vm);
@@ -191,6 +192,76 @@ public sealed class SettingsVerifier(IServiceProvider services)
         Record("General", "RunInTaskbarMode=true returns pet to taskbar (live)", back, $"mode={layout.Current.Mode}");
     }
 
+    // Progression lives in a scratch folder during diagnostics (see VerifierScratch), so granting XP never touches the user's file.
+    private void GrantXp(int ticks)
+    {
+        var progression = services.GetRequiredService<FocusCatAI.Application.Progression.IProgressionService>();
+        for (var i = 0; i < ticks; i++)
+        {
+            progression.RecordCompanionshipTick();
+        }
+    }
+
+    private async Task ProgressionChecks(SettingsViewModel vm, SettingsWindow? settingsWindow)
+    {
+        var progression = services.GetRequiredService<FocusCatAI.Application.Progression.IProgressionService>();
+        var paths = services.GetRequiredService<IAppPaths>();
+        var before = progression.Current.TotalXp;
+
+        var settingsChanges = 0;
+        EventHandler<AppSettings> counter = (_, _) => settingsChanges++;
+        Settings.Changed += counter;
+        var progressionChanges = 0;
+        EventHandler onProgression = (_, _) => progressionChanges++;
+        progression.Changed += onProgression;
+
+        services.GetRequiredService<ProgressionCoordinator>().Tick();
+        await Task.Delay(200);
+        Settings.Changed -= counter;
+        progression.Changed -= onProgression;
+
+        Record("Progression", "A companionship tick adds 1 XP", progression.Current.TotalXp == before + 1, $"{before} -> {progression.Current.TotalXp}");
+        Record("Progression", "A tick does not raise settings Changed", settingsChanges == 0, $"settings changes={settingsChanges}");
+        Record("Progression", "A tick raises progression Changed", progressionChanges == 1, $"changes={progressionChanges}");
+        Record("Progression", "Settings view model shows the level and XP", vm.LevelText.StartsWith("Lv. ", StringComparison.Ordinal) && vm.XpText.Contains("XP", StringComparison.Ordinal), $"{vm.LevelText}; {vm.XpText}");
+        Record("Progression", "Settings window has the progress card", settingsWindow?.FindName("XpBar") is System.Windows.Controls.ProgressBar && settingsWindow.FindName("CompanionshipText") is not null, "");
+        var bar = settingsWindow?.FindName("XpBar") as System.Windows.Controls.ProgressBar;
+        Record("Progression", "Progress bar follows the XP fraction", bar is not null && Math.Abs(bar.Value - progression.Progress.ProgressFraction) < 0.0001, $"bar={bar?.Value}");
+        Record("Progression", "Progress bar uses theme brushes", bar?.GetValue(System.Windows.Controls.Control.ForegroundProperty) is System.Windows.Media.SolidColorBrush, "");
+
+        progression.Flush();
+        var file = Path.Combine(VerifierScratch.ProgressionDirectory ?? paths.RootDirectory, FocusCatAI.Infrastructure.JsonProgressionStore.FileName);
+        Record("Progression", "progression.json is written separately from settings.json", File.Exists(file) && FocusCatAI.Infrastructure.JsonProgressionStore.FileName != JsonSettingsService.FileName, file);
+        var stored = JsonDocument.Parse(File.ReadAllText(file)).RootElement.GetProperty("TotalXp").GetInt64();
+        Record("Progression", "Flush saves the current XP", stored == progression.Current.TotalXp, $"file={stored} memory={progression.Current.TotalXp}");
+        var settingsText = File.ReadAllText(Path.Combine(paths.RootDirectory, JsonSettingsService.FileName));
+        Record("Progression", "settings.json holds no XP", !settingsText.Contains("TotalXp", StringComparison.Ordinal), "");
+
+        // Achievements: 150 XP was granted earlier in the run, so the level-based ones are unlocked and the time-based ones are not.
+        var achievementList = settingsWindow?.FindName("AchievementList") as System.Windows.Controls.ItemsControl;
+        Record("Achievements", "Settings window shows the achievements list", achievementList is not null && achievementList.Items.Count == FocusCatAI.Domain.Progression.AchievementCatalog.All.Count, $"items={achievementList?.Items.Count}");
+        var ids = progression.Current.UnlockedAchievementIds;
+        Record("Achievements", "Lv. 3 unlocked first_steps and full_house", ids.Contains("first_steps") && ids.Contains("full_house"), string.Join(",", ids));
+        Record("Achievements", "Higher milestones stay locked", !ids.Contains("trusted_friend") && !ids.Contains("workday_buddy"), string.Join(",", ids));
+        Record("Achievements", "Summary text counts unlocked achievements", vm.AchievementSummary == $"{ids.Count} of 8 unlocked", vm.AchievementSummary);
+        Record("Achievements", "Unlocked ids are saved to progression.json", File.ReadAllText(file).Contains("first_steps", StringComparison.Ordinal), "");
+
+        var unlockedEvents = 0;
+        EventHandler<IReadOnlyList<FocusCatAI.Domain.Progression.AchievementDefinition>> onUnlocked = (_, list) => unlockedEvents += list.Count;
+        progression.AchievementsUnlocked += onUnlocked;
+        for (var i = 0; i < 60; i++)
+        {
+            progression.RecordCompanionshipTick();
+        }
+
+        progression.AchievementsUnlocked -= onUnlocked;
+        Record("Achievements", "first_hour was already unlocked at 150 minutes and does not re-fire", progression.Current.UnlockedAchievementIds.Contains("first_hour") && unlockedEvents == 0, $"events={unlockedEvents}");
+        var unlockedBefore = progression.Current.UnlockedAchievementIds.Count;
+        progression.RecordCompanionshipTick();
+        Record("Achievements", "An unlocked achievement never re-fires", progression.Current.UnlockedAchievementIds.Count == unlockedBefore, "");
+        await Task.Delay(100);
+    }
+
     private async Task ThemeChecks(SettingsViewModel vm, SettingsWindow? settingsWindow)
     {
         var applier = services.GetRequiredService<ThemeApplier>();
@@ -237,6 +308,10 @@ public sealed class SettingsVerifier(IServiceProvider services)
         await Task.Delay(250);
     }
 
+    private string? ReadStoredPetId() =>
+        JsonDocument.Parse(File.ReadAllText(Path.Combine(services.GetRequiredService<IAppPaths>().RootDirectory, JsonSettingsService.FileName)))
+            .RootElement.GetProperty("Pet").GetProperty("SelectedPetId").GetString();
+
     private async Task PetSelectionChecks(SettingsViewModel vm, SettingsWindow? settingsWindow)
     {
         var petWindow = services.GetRequiredService<PetWindow>();
@@ -244,17 +319,46 @@ public sealed class SettingsVerifier(IServiceProvider services)
         var petVm = services.GetRequiredService<PetViewModel>();
         var catalog = services.GetRequiredService<IPetCatalog>();
 
-        Record("Pet Selection", "Default SelectedPetId is cat", Settings.Current.Pet.SelectedPetId == "cat" && vm.SelectedPet.Id == "cat", Settings.Current.Pet.SelectedPetId);
-        Record("Pet Selection", "Picker lists all catalog pets", vm.Pets.Select(p => p.Id).SequenceEqual(catalog.All.Select(p => p.Id)), string.Join(",", vm.Pets.Select(p => p.Id)));
+        Record("Pet Selection", "Default SelectedPetId is cat", Settings.Current.Pet.SelectedPetId == "cat" && vm.SelectedPet.Pet.Id == "cat", Settings.Current.Pet.SelectedPetId);
+        Record("Pet Selection", "Picker lists all catalog pets", vm.Pets.Select(p => p.Pet.Id).SequenceEqual(catalog.All.Select(p => p.Id)), string.Join(",", vm.Pets.Select(p => p.Pet.Id)));
 
-        vm.SelectedPet = vm.Pets.Single(p => p.Id == "ginger");
+        // Locked state first: a fresh scratch progression is level 1 (0 XP).
+        var progression = services.GetRequiredService<FocusCatAI.Application.Progression.IProgressionService>();
+        Record("Pet Selection", "Verifier starts at Lv. 1 with 0 XP in the scratch progression", progression.Progress.Level == 1 && progression.Current.TotalXp == 0, $"level={progression.Progress.Level} xp={progression.Current.TotalXp}");
+        var cream = vm.Pets.Single(p => p.Pet.Id == "cat");
+        var tuxedoLocked = vm.Pets.Single(p => p.Pet.Id == "tuxedo");
+        var gingerLocked = vm.Pets.Single(p => p.Pet.Id == "ginger");
+        Record("Pet Selection", "Cream Cat is unlocked at Lv. 1", cream.IsUnlocked && cream.Label == "Cream Cat", cream.Label);
+        Record("Pet Selection", "Tuxedo Cat is locked at Lv. 1 and says when it unlocks", !tuxedoLocked.IsUnlocked && tuxedoLocked.Label == "Tuxedo Cat (Unlocks at Lv. 2)", tuxedoLocked.Label);
+        Record("Pet Selection", "Ginger Cat is locked at Lv. 1 and says when it unlocks", !gingerLocked.IsUnlocked && gingerLocked.Label == "Ginger Cat (Unlocks at Lv. 3)", gingerLocked.Label);
+        vm.SelectedPet = gingerLocked;
+        await Task.Delay(200);
+        Record("Pet Selection", "Choosing a locked pet is ignored (settings unchanged)", Settings.Current.Pet.SelectedPetId == "cat" && petVm.PetId == "cat", Settings.Current.Pet.SelectedPetId);
+        var combo = settingsWindow?.FindName("CompanionPicker") as System.Windows.Controls.ComboBox;
+        Record("Pet Selection", "Settings window picker exists", combo is not null, "");
+
+        // A locked pet that is already stored (for example a v0.2.0 selection) shows the default and leaves settings.json alone.
+        Settings.Update(s => s with { Pet = s.Pet with { SelectedPetId = "ginger" } });
+        await Task.Delay(300);
+        Record("Pet Selection", "Stored locked pet falls back to Cream Cat at runtime", petVm.PetId == "cat", petVm.PetId);
+        Record("Pet Selection", "Fallback does not rewrite settings.json", ReadStoredPetId() == "ginger", ReadStoredPetId() ?? "null");
+        Settings.Update(s => s with { Pet = s.Pet with { SelectedPetId = "cat" } });
+        await Task.Delay(200);
+
+        // Reach Lv. 3 (150 XP) in the scratch state; the pets unlock live.
+        GrantXp(150);
+        await Task.Delay(300);
+        Record("Pet Selection", "150 XP reaches Lv. 3", progression.Progress.Level == 3, $"level={progression.Progress.Level}");
+        Record("Pet Selection", "Tuxedo and Ginger unlock live", vm.Pets.All(p => p.IsUnlocked) && vm.Pets.Single(p => p.Pet.Id == "ginger").Label == "Ginger Cat", string.Join(",", vm.Pets.Select(p => p.Label)));
+
+        vm.SelectedPet = vm.Pets.Single(p => p.Pet.Id == "ginger");
         var swapped = await WaitUntil(() => petVm.PetId == "ginger", 2000);
         Record("Pet Selection", "Choosing Ginger swaps the live skin", swapped, petVm.PetId);
         Record("Pet Selection", "PetWindow instance and HWND unchanged", ReferenceEquals(petWindow, services.GetRequiredService<PetWindow>()) && hwnd == new System.Windows.Interop.WindowInteropHelper(petWindow).Handle && hwnd != IntPtr.Zero, "");
 
         Settings.Update(s => s with { Pet = s.Pet with { SelectedPetId = "no-such-pet" } });
         await Task.Delay(300);
-        Record("Pet Selection", "Unknown id falls back to the default pet", petVm.PetId == "cat" && vm.SelectedPet.Id == "cat", petVm.PetId);
+        Record("Pet Selection", "Unknown id falls back to the default pet", petVm.PetId == "cat" && vm.SelectedPet.Pet.Id == "cat", petVm.PetId);
 
         Settings.Update(s => s with { Pet = s.Pet with { SelectedPetId = "cat" } });
         await Task.Delay(200);
