@@ -35,6 +35,7 @@ public sealed class TrayIconService(
     public const string OpenSettingsHeader = "Open Settings";
     public const string PetHeader = "Pet";
     public const string AccessoryHeader = "Accessory";
+    public const string AskCompanionHeader = "Ask Companion";
     public const string RestartHeader = "Restart WorkBuddy";
     public const string AboutHeader = "About";
     public const string CheckForUpdatesHeader = "Check for Updates";
@@ -107,6 +108,7 @@ public sealed class TrayIconService(
         menu.Items.Add(_hideItem);
         menu.Items.Add(_petMenu);
         menu.Items.Add(_accessoryMenu);
+        menu.Items.Add(Item(AskCompanionHeader, () => services.GetRequiredService<ViewModels.PetViewModel>().AskCompanion("Give me a quick work tip!")));
         menu.Items.Add(new Separator());
         menu.Items.Add(Item(OpenSettingsHeader, OpenSettings));
         menu.Items.Add(Item(RestartHeader, () => services.GetRequiredService<AppLifecycle>().Restart()));

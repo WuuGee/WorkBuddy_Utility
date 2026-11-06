@@ -58,6 +58,8 @@ public sealed partial class PetViewModel : ObservableObject
     [ObservableProperty] private double _accessoryWidth;
     [ObservableProperty] private double _accessoryHeight;
 
+    private readonly IAiCompanionService _ai;
+    private readonly ISpeechPresenter _speech;
     private readonly IAccessoryCatalog _accessories;
     private readonly AccessoryRenderer _accessoryRenderer;
     private string? _accessoryFallbackLogged;
@@ -75,8 +77,12 @@ public sealed partial class PetViewModel : ObservableObject
         FocusCatAI.Application.Progression.IProgressionService progression,
         IAccessoryCatalog accessories,
         AccessoryRenderer accessoryRenderer,
-        ILogger<PetViewModel> logger)
+        ILogger<PetViewModel> logger,
+        IAiCompanionService ai,
+        ISpeechPresenter speech)
     {
+        _ai = ai;
+        _speech = speech;
         _accessories = accessories;
         _accessoryRenderer = accessoryRenderer;
         _progression = progression;
@@ -160,6 +166,35 @@ public sealed partial class PetViewModel : ObservableObject
     }
 
     public void Celebrate() => _stateMachine.Trigger(PetTrigger.Celebrate);
+
+    /// <summary>
+    /// Asks the AI companion for a short reply for the active pet and level, plays Think then Speak on the pet
+    /// and shows the text in the speech bubble. Returns null when AI is disabled or the prompt is empty.
+    /// </summary>
+    public FocusCatAI.Domain.AI.CompanionReply? AskCompanion(string prompt)
+    {
+        if (!_settings.Current.Ai.Enabled || string.IsNullOrWhiteSpace(prompt))
+        {
+            return null;
+        }
+
+        try
+        {
+            _stateMachine.Trigger(PetTrigger.ChatStarted);
+            var context = new FocusCatAI.Domain.AI.CompanionPromptContext(prompt.Trim(), _skinId, _progression.Progress.Level, DateTime.Now.Hour);
+            var reply = _ai.GenerateReply(context);
+            _stateMachine.Trigger(PetTrigger.AnswerReady);
+            _speech.Show(reply.Text, TimeSpan.FromSeconds(Math.Clamp(2 + reply.Text.Length * 0.06, 4, 9)));
+            _stateMachine.Trigger(PetTrigger.Speak);
+            return reply;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation(ex, "Ask Companion failed");
+            _stateMachine.Trigger(PetTrigger.SpeechFinished);
+            return null;
+        }
+    }
 
     private void ApplyLayout()
     {

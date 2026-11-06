@@ -55,7 +55,8 @@
                     <ListBoxItem Content="Behavior" />
                     <ListBoxItem Content="Quiet Hours" />
                     <ListBoxItem Content="Notifications" />
-                    <ListBoxItem Content="Advanced" />
+                    <ListBoxItem Content="AI Companion" />
+                <ListBoxItem Content="Advanced" />
                 </ListBox>
             </DockPanel>
         </Border>
@@ -201,6 +202,29 @@
                 <CheckBox Style="{StaticResource Row}" Content="Enable productivity messages" IsChecked="{Binding EnableProductivityMessages, Mode=TwoWay}" />
                 <CheckBox Style="{StaticResource Row}" Content="Enable Pomodoro messages" IsChecked="{Binding EnablePomodoroMessages, Mode=TwoWay}" />
                 <TextBlock Style="{StaticResource Hint}" Margin="0" Text="'Enable messages' on the Behavior page switches every message off." />
+            </StackPanel>
+
+            <StackPanel x:Name="PageAi" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource SectionTitle}" Text="AI Companion" />
+                <StackPanel Style="{StaticResource Row}">
+                    <CheckBox x:Name="AiEnabledBox" Content="Enable AI companion" IsChecked="{Binding AiEnabled, Mode=TwoWay}" />
+                    <TextBlock Style="{StaticResource Hint}" Text="Runs locally. Without a model it uses built-in replies." />
+                </StackPanel>
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Device" />
+                    <ComboBox x:Name="AiDeviceBox" ItemsSource="{Binding AiDevices}" SelectedItem="{Binding AiDevice, Mode=TwoWay}" Width="200" HorizontalAlignment="Left" />
+                    <TextBlock x:Name="AiHardwareLabel" Style="{StaticResource Hint}" Margin="0,4,0,0" Text="{Binding AiHardwareText, Mode=OneWay}" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock x:Name="AiModelsLabel" Foreground="{DynamicResource Brush.Text.Secondary}" TextWrapping="Wrap" Text="{Binding AiModelsText, Mode=OneWay}" />
+                    <Button x:Name="OpenModelsButton" Style="{StaticResource ActionButton}" Margin="0,6,0,0" Content="Open Models Folder" Click="OnOpenModels" />
+                </StackPanel>
+                <StackPanel Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Ask your companion" />
+                    <TextBox x:Name="AskBox" Text="{Binding AskPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="380" HorizontalAlignment="Left" />
+                    <Button x:Name="AskButton" Style="{StaticResource ActionButton}" Margin="0,6,0,0" Content="Ask" Click="OnAsk" />
+                    <TextBlock x:Name="AskReplyText" Text="{Binding AskReply, Mode=OneWay}" TextWrapping="Wrap" Foreground="{DynamicResource Brush.Text.Primary}" />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel x:Name="PageAdvanced" Visibility="Collapsed">

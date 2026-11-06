@@ -35,10 +35,19 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     private readonly IPetCatalog _catalog;
     private readonly IAccessoryCatalog _accessories;
     private readonly IProgressionService _progression;
+    private readonly IAiCompanionService? _ai;
+    private readonly ILocalModelScanner? _scanner;
+    private readonly Func<string, FocusCatAI.Domain.AI.CompanionReply?>? _ask;
+    private string _askPrompt = string.Empty;
+    private string _askReply = string.Empty;
 
     public SettingsViewModel(ISettingsService settings, IAppPaths paths, IPetPreferences preferences, IStartupManager startup,
-        IExternalLauncher launcher, IPetCatalog catalog, IProgressionService progression, IAccessoryCatalog accessories)
+        IExternalLauncher launcher, IPetCatalog catalog, IProgressionService progression, IAccessoryCatalog accessories,
+        IAiCompanionService? ai = null, ILocalModelScanner? scanner = null, Func<string, FocusCatAI.Domain.AI.CompanionReply?>? ask = null)
     {
+        _ai = ai;
+        _scanner = scanner;
+        _ask = ask;
         _accessories = accessories;
         _progression = progression;
         _progression.Changed += OnProgressionChanged;
@@ -185,6 +194,66 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     public bool EnableProductivityMessages { get => S.Notifications.EnableProductivityMessages; set => Edit(s => s with { Notifications = s.Notifications with { EnableProductivityMessages = value } }); }
     public bool EnablePomodoroMessages { get => S.Notifications.EnablePomodoroMessages; set => Edit(s => s with { Notifications = s.Notifications with { EnablePomodoroMessages = value } }); }
 
+    // AI Companion
+    public bool AiEnabled { get => S.Ai.Enabled; set => Edit(s => s with { Ai = s.Ai with { Enabled = value } }); }
+    public IReadOnlyList<FocusCatAI.Domain.AI.AiDevicePreference> AiDevices { get; } = Enum.GetValues<FocusCatAI.Domain.AI.AiDevicePreference>();
+    public FocusCatAI.Domain.AI.AiDevicePreference AiDevice { get => S.Ai.Device; set => Edit(s => s with { Ai = s.Ai with { Device = value } }); }
+
+    public string AiHardwareText
+    {
+        get
+        {
+            if (_ai is null)
+            {
+                return "AI engine unavailable";
+            }
+
+            var device = FocusCatAI.Domain.AI.AiDeviceResolver.Resolve(S.Ai.Device, _ai.Hardware);
+            return $"Detected: {_ai.Hardware.Summary}. Active device: {device}";
+        }
+    }
+
+    public int AiModelCount
+    {
+        get
+        {
+            try
+            {
+                return _scanner?.ListInstalledModels().Count ?? 0;
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+    }
+
+    public string AiModelsText => $"Local models found in {_paths.ModelsDirectory}: {AiModelCount}";
+
+    public string AskPrompt { get => _askPrompt; set => SetProperty(ref _askPrompt, value); }
+
+    public string AskReply { get => _askReply; private set => SetProperty(ref _askReply, value); }
+
+    public void OpenModelsFolder() => _launcher.OpenModelsFolder();
+
+    /// <summary>Asks the companion (also shown in the pet's speech bubble) and displays the reply in the card.</summary>
+    public void AskCompanion()
+    {
+        if (!S.Ai.Enabled)
+        {
+            AskReply = "AI companion is turned off.";
+            return;
+        }
+
+        var reply = _ask?.Invoke(AskPrompt);
+        if (reply is null && _ai is not null && !string.IsNullOrWhiteSpace(AskPrompt))
+        {
+            reply = _ai.GenerateReply(new FocusCatAI.Domain.AI.CompanionPromptContext(AskPrompt.Trim(), S.Pet.SelectedPetId, _progression.Progress.Level, DateTime.Now.Hour));
+        }
+
+        AskReply = reply?.Text ?? "Type something to ask your companion.";
+    }
+
     // Advanced
     public void OpenDataFolder() => _launcher.OpenDataFolder();
 
@@ -258,5 +327,11 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     }
 
     // Raised from the settings service, possibly on another thread; the window marshals bindings via the dispatcher.
-    private void OnSettingsChanged(object? sender, AppSettings e) => OnPropertyChanged(string.Empty);
+    private void OnSettingsChanged(object? sender, AppSettings e)
+    {
+        OnPropertyChanged(string.Empty);
+        OnPropertyChanged(nameof(AiHardwareText));
+        OnPropertyChanged(nameof(AiModelsText));
+        OnPropertyChanged(nameof(AiModelCount));
+    }
 }

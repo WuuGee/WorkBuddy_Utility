@@ -306,6 +306,7 @@ public partial class App : System.Windows.Application
                         new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) },
                         sp.GetRequiredService<ILogger<FocusCatAI.Infrastructure.Updates.GitHubUpdateChecker>>()));
                 services.AddSingleton<SingleInstanceChannel>();
+                services.AddTransient<Func<string, FocusCatAI.Domain.AI.CompanionReply?>>(sp => prompt => sp.GetRequiredService<PetViewModel>().AskCompanion(prompt));
                 services.AddTransient<SettingsViewModel>();
                 services.AddTransient<SettingsWindow>();
                 services.AddSingleton<TrayIconService>();

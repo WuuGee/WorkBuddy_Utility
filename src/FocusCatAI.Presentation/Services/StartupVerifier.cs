@@ -195,7 +195,9 @@ public sealed class StartupVerifier(IServiceProvider services)
             services.GetRequiredService<IExternalLauncher>(),
             services.GetRequiredService<IPetCatalog>(),
             services.GetRequiredService<FocusCatAI.Application.Progression.IProgressionService>(),
-            services.GetRequiredService<IAccessoryCatalog>());
+            services.GetRequiredService<IAccessoryCatalog>(),
+            services.GetRequiredService<IAiCompanionService>(),
+            services.GetRequiredService<ILocalModelScanner>());
         var real = new RegistryRunKeyStore();
 
         vm.StartWithWindows = true;

@@ -61,6 +61,7 @@ public sealed class SettingsVerifier(IServiceProvider services)
             await Behavior(vm);
             await QuietHours(vm);
             Notifications(vm);
+            AiCompanion(vm, window);
             Persistence(paths, vm);
             Advanced(vm, paths);
 
@@ -130,7 +131,7 @@ public sealed class SettingsVerifier(IServiceProvider services)
         Record("Settings Window", "Window size 720x520", Math.Abs(window.ActualWidth - 720) < 2 && Math.Abs(window.ActualHeight - 520) < 2,
             $"{window.ActualWidth:F0}x{window.ActualHeight:F0}");
 
-        var pages = new[] { "PageGeneral", "PagePet", "PageBehavior", "PageQuiet", "PageNotifications", "PageAdvanced" };
+        var pages = new[] { "PageGeneral", "PagePet", "PageBehavior", "PageQuiet", "PageNotifications", "PageAi", "PageAdvanced" };
         var list = (ListBox)window.FindName("Categories");
         for (var i = 0; i < pages.Length; i++)
         {
@@ -530,6 +531,60 @@ public sealed class SettingsVerifier(IServiceProvider services)
         var reloaded = new JsonSettingsService(paths, NullLogger<JsonSettingsService>.Instance).Current;
         Record("Persistence", "Fresh service instance (simulated restart) loads identical settings", reloaded == expected,
             $"Size={reloaded.Pet.Size} Speed={reloaded.Pet.AnimationSpeed} Freq={reloaded.Behavior.MessageFrequency} QuietStart={reloaded.QuietHours.Start}");
+    }
+
+    private void AiCompanion(SettingsViewModel vm, SettingsWindow? window)
+    {
+        var originalAi = Settings.Current.Ai;
+        try
+        {
+            AiCompanionChecks(vm, window);
+        }
+        finally
+        {
+            Settings.Update(s => s with { Ai = originalAi });
+        }
+    }
+
+    private void AiCompanionChecks(SettingsViewModel vm, SettingsWindow? window)
+    {
+        vm.AiEnabled = true;
+        vm.AiDevice = FocusCatAI.Domain.AI.AiDevicePreference.Gpu;
+        Record("AI Companion", "Enabled and Device persist in settings",
+            Settings.Current.Ai.Enabled && Settings.Current.Ai.Device == FocusCatAI.Domain.AI.AiDevicePreference.Gpu, "");
+
+        var cpuOnly = new FocusCatAI.Domain.AI.AiHardwareCapabilities(true, false, false, "CPU");
+        Record("AI Companion", "Npu requested without an NPU falls back to Cpu",
+            FocusCatAI.Domain.AI.AiDeviceResolver.Resolve(FocusCatAI.Domain.AI.AiDevicePreference.Npu, cpuOnly) == FocusCatAI.Domain.AI.AiExecutionDevice.Cpu, "");
+
+        var pet = services.GetRequiredService<PetViewModel>();
+        var reply = pet.AskCompanion("Give me a quick work tip!");
+        Record("AI Companion", "AskCompanion returns a non-empty reply when enabled", !string.IsNullOrWhiteSpace(reply?.Text), reply?.Text ?? "null");
+
+        vm.AiEnabled = false;
+        Record("AI Companion", "AskCompanion returns null when disabled", pet.AskCompanion("Hello") is null, "");
+
+        Record("AI Companion", "AI status texts are populated",
+            !string.IsNullOrEmpty(vm.AiHardwareText) && vm.AiModelsText.Contains("Local models"), vm.AiHardwareText);
+
+        var names = new[] { "AiEnabledBox", "AiDeviceBox", "AskBox", "AskButton" };
+        var found = names.Where(n => window?.FindName(n) is not null).ToArray();
+        Record("AI Companion", "Loaded Settings window contains AiEnabledBox, AiDeviceBox, AskBox and AskButton",
+            window is not null && found.Length == names.Length, $"found={string.Join(",", found)}");
+
+        if (window is not null)
+        {
+            var box = (CheckBox)window.FindName("AiEnabledBox");
+            vm.AiEnabled = true;
+            Record("AI Companion", "AiEnabledBox reflects the view model", box.IsChecked == true, $"IsChecked={box.IsChecked}");
+            var raised = new List<string?>();
+            void Handler(object? s, System.ComponentModel.PropertyChangedEventArgs e) => raised.Add(e.PropertyName);
+            vm.PropertyChanged += Handler;
+            vm.AiDevice = FocusCatAI.Domain.AI.AiDevicePreference.Cpu;
+            vm.PropertyChanged -= Handler;
+            Record("AI Companion", "Changing the device raises AiHardwareText, AiModelsText and AiModelCount",
+                raised.Contains(nameof(SettingsViewModel.AiHardwareText)) && raised.Contains(nameof(SettingsViewModel.AiModelsText)) && raised.Contains(nameof(SettingsViewModel.AiModelCount)), string.Join(",", raised));
+        }
     }
 
     private void Advanced(SettingsViewModel vm, IAppPaths paths)

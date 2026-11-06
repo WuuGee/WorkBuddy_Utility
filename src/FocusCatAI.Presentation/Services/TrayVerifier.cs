@@ -25,7 +25,7 @@ public sealed class TrayVerifier(IServiceProvider services)
     private static readonly string?[] ExpectedMenu =
     [
         AppConstants.ProductName, TrayIconService.CompanionPrefix + "*", null,
-        TrayIconService.ShowCatHeader, TrayIconService.HideCatHeader, TrayIconService.PetHeader, TrayIconService.AccessoryHeader, null,
+        TrayIconService.ShowCatHeader, TrayIconService.HideCatHeader, TrayIconService.PetHeader, TrayIconService.AccessoryHeader, TrayIconService.AskCompanionHeader, null,
         TrayIconService.OpenSettingsHeader, TrayIconService.RestartHeader, null,
         TrayIconService.AboutHeader, TrayIconService.CheckForUpdatesHeader,
         TrayIconService.OpenLogsHeader, TrayIconService.ReportIssueHeader, null,
@@ -61,6 +61,7 @@ public sealed class TrayVerifier(IServiceProvider services)
             await HideCat();
             await ShowCat();
             await PetSelection();
+            AskCompanionItem();
             await SettingsLaunch();
             await AboutDialog();
             await UpdateCheck();
@@ -133,7 +134,7 @@ public sealed class TrayVerifier(IServiceProvider services)
         CompanionLine();
         var headers = Tray.MenuHeaders;
         Record("Tray Startup", "Tray icon is created and visible", Tray.IsVisible, "");
-        Record("Tray Startup", "Menu is exactly: WorkBuddy, Show Cat, Hide Cat, Pet, Open Settings, Restart, About, Check for Updates, Open Logs Folder, Report an Issue, Exit",
+        Record("Tray Startup", "Menu is exactly: WorkBuddy, Show Cat, Hide Cat, Pet, Ask Companion, Open Settings, Restart, About, Check for Updates, Open Logs Folder, Report an Issue, Exit",
             MenuMatches(headers), string.Join(" | ", headers.Select(h => h ?? "---")));
         Record("Tray Startup", "No Pomodoro controls in the tray",
             headers.All(h => h is null || !h.Contains("Focus", StringComparison.OrdinalIgnoreCase) && !h.Contains("Pomodoro", StringComparison.OrdinalIgnoreCase)), "");
@@ -232,6 +233,39 @@ public sealed class TrayVerifier(IServiceProvider services)
         Settings.Update(s => s with { Pet = s.Pet with { SelectedPetId = original } });
         var restored = await WaitUntil(() => services.GetRequiredService<ViewModels.PetViewModel>().PetId == original, 2000);
         Record("Pet Menu", "Original pet restored", restored, original);
+    }
+
+    private void AskCompanionItem()
+    {
+        var item = Tray.FindMenuItem(TrayIconService.AskCompanionHeader);
+        Record("Ask Companion", "Ask Companion item exists and is enabled", item is { IsEnabled: true }, "");
+        if (item is null)
+        {
+            return;
+        }
+
+        var original = Settings.Current.Ai;
+        try
+        {
+            Settings.Update(s => s with { Ai = s.Ai with { Enabled = true } });
+            var thrown = string.Empty;
+            try
+            {
+                Click(item);
+            }
+            catch (Exception ex)
+            {
+                thrown = ex.Message;
+            }
+
+            Record("Ask Companion", "Clicking Ask Companion does not throw", thrown.Length == 0, thrown);
+            var reply = services.GetRequiredService<ViewModels.PetViewModel>().AskCompanion("Give me a quick work tip!");
+            Record("Ask Companion", "Ask Companion produces a non-empty reply the pet speaks", !string.IsNullOrWhiteSpace(reply?.Text), reply?.Text ?? "null");
+        }
+        finally
+        {
+            Settings.Update(s => s with { Ai = original });
+        }
     }
 
     private async Task SettingsLaunch()

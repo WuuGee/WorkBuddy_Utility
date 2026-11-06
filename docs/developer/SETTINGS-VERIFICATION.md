@@ -8,6 +8,10 @@ PASS/FAIL report. Use it for regression checks, before a release, and later in C
 Unit tests prove the settings logic. This proves the wiring: that the settings window, the settings file, the pet
 window and the behavior services actually agree when WorkBuddy is running.
 
+## AI Companion area (v0.4.0)
+
+Checks persistence, Npu->Cpu fallback, reply when enabled / null when disabled, status texts, that the loaded window contains AiEnabledBox, AiDeviceBox, AskBox and AskButton, and that device changes raise the status properties. The original AI settings are restored afterwards.
+
 ## Usage
 
 ```powershell

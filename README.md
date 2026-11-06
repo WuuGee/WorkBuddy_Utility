@@ -28,6 +28,10 @@ Get-FileHash .\WorkBuddy-Setup-0.3.0.exe -Algorithm SHA256
 Right-click the cat's tray icon (near the clock) for Show Cat, Hide Cat, Pet, Settings, Restart, About, Check for Updates and Exit.
 
 Choose your companion (Cream Cat, Tuxedo Cat or Ginger Cat) from the **Pet** submenu or Settings > Pet, and pick a Light, Dark or System theme in Settings > General. Both apply immediately.
+### New in v0.4.0
+
+- **AI Companion:** an optional local companion. Use **Ask Companion** in the tray or Settings > AI Companion, and pick Auto, Cpu, Gpu or Npu (falls back to Cpu if unavailable).
+
 ### New in v0.3.0
 
 - **Passive XP & Levels:** your companion earns XP quietly while it is visible. No dialogs; a level-up plays a happy animation.

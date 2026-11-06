@@ -15,7 +15,7 @@ public partial class SettingsWindow : Window
         _viewModel = viewModel;
         DataContext = viewModel;
         VersionLabel.Text = viewModel.VersionText;
-        _pages = [PageGeneral, PagePet, PageBehavior, PageQuiet, PageNotifications, PageAdvanced];
+        _pages = [PageGeneral, PagePet, PageBehavior, PageQuiet, PageNotifications, PageAi, PageAdvanced];
         Closed += (_, _) => viewModel.Dispose();
     }
 
@@ -31,6 +31,10 @@ public partial class SettingsWindow : Window
             _pages[i].Visibility = i == Categories.SelectedIndex ? Visibility.Visible : Visibility.Collapsed;
         }
     }
+
+    private void OnOpenModels(object sender, RoutedEventArgs e) => _viewModel.OpenModelsFolder();
+
+    private void OnAsk(object sender, RoutedEventArgs e) => _viewModel.AskCompanion();
 
     private void OnOpenData(object sender, RoutedEventArgs e) => _viewModel.OpenDataFolder();
 
