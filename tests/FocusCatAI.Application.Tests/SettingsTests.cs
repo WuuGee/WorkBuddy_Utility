@@ -15,6 +15,8 @@ public sealed class SettingsTests : IDisposable
         public string RootDirectory => root;
         public string LogsDirectory => Path.Combine(root, "logs");
         public string ModelsDirectory => Path.Combine(root, "models");
+        public string CustomPetsDirectory => Path.Combine(root, "Pets");
+        public string CustomThemesDirectory => Path.Combine(root, "Themes");
     }
 
     private readonly string _root = Path.Combine(Path.GetTempPath(), "wb-settings-" + Guid.NewGuid().ToString("N"));

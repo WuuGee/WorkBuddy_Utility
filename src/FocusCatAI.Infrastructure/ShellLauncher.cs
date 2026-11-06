@@ -11,6 +11,10 @@ public sealed class ShellLauncher(IAppPaths paths, ILogger<ShellLauncher> logger
 
     public void OpenModelsFolder() => OpenFolder(paths.ModelsDirectory);
 
+    public void OpenCustomPetsFolder() => OpenFolder(paths.CustomPetsDirectory);
+
+    public void OpenCustomThemesFolder() => OpenFolder(paths.CustomThemesDirectory);
+
     public void OpenDataFolder() => OpenFolder(paths.RootDirectory);
 
     public void OpenUrl(string url)

@@ -9,6 +9,12 @@ public interface IExternalLauncher
     /// <summary>Opens the local AI models folder in Explorer, creating it first if needed. Never throws.</summary>
     void OpenModelsFolder();
 
+    /// <summary>Opens the community pets folder, creating it first if needed. Never throws.</summary>
+    void OpenCustomPetsFolder();
+
+    /// <summary>Opens the custom themes folder, creating it first if needed. Never throws.</summary>
+    void OpenCustomThemesFolder();
+
     /// <summary>Opens the data folder (settings and preferences) in Explorer. Never throws.</summary>
     void OpenDataFolder();
 

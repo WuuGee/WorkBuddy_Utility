@@ -81,6 +81,22 @@ public sealed class SettingsViewModel : ObservableObject, IDisposable
     public string LogFolder => _paths.LogsDirectory;
     public string VersionText => $"WorkBuddy {typeof(SettingsViewModel).Assembly.GetName().Version?.ToString(3)}";
 
+    public void OpenCustomPetsFolder() => _launcher.OpenCustomPetsFolder();
+
+    public void OpenCustomThemesFolder() => _launcher.OpenCustomThemesFolder();
+
+    /// <summary>Read-only summary of community packs: custom pet count and custom theme status.</summary>
+    public string CommunityPacksText
+    {
+        get
+        {
+            var customPets = _catalog.All.Count(p => p.Id is not ("cat" or "tuxedo" or "ginger"));
+            var themeCount = FocusCatAI.Infrastructure.CustomThemeLoader.Load(_paths).Count;
+            var themeText = themeCount > 0 ? $"custom theme active ({themeCount} colors)" : "no custom theme";
+            return $"Custom pets: {customPets} found in {_paths.CustomPetsDirectory}. Themes: {themeText}.";
+        }
+    }
+
     private AppSettings S => _settings.Current;
     private void Edit(Func<AppSettings, AppSettings> change) => _settings.Update(change);
 

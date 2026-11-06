@@ -27,7 +27,8 @@ public sealed class ActivePetCatalog(ISpriteManager sprites, ISettingsService se
     public IReadOnlyList<PetActivity> WithTag(string tag) => Skin.WithTag(tag);
 }
 
-public sealed class SpriteManager(IOptions<PetOptions> options, ILogger<SpriteManager> logger) : ISpriteManager
+public sealed class SpriteManager(IOptions<PetOptions> options, ILogger<SpriteManager> logger, IAppPaths? paths = null)
+    : ISpriteManager
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -66,6 +67,11 @@ public sealed class SpriteManager(IOptions<PetOptions> options, ILogger<SpriteMa
             ? options.Value.AssetsRoot
             : Path.Combine(AppContext.BaseDirectory, options.Value.AssetsRoot);
         var petDir = Path.Combine(root, "Pets", petId);
+        if (!File.Exists(Path.Combine(petDir, "pet.json")) && paths is not null && !string.IsNullOrWhiteSpace(paths.CustomPetsDirectory))
+        {
+            petDir = Path.Combine(paths.CustomPetsDirectory, petId);
+        }
+
         var manifestPath = Path.Combine(petDir, "pet.json");
         logger.LogInformation("Pet manifest: {Path} exists={Exists}", manifestPath, File.Exists(manifestPath));
 
@@ -130,6 +136,9 @@ public sealed class SpriteManager(IOptions<PetOptions> options, ILogger<SpriteMa
             clips,
             tags.ToDictionary(t => t.Key, t => (IReadOnlyList<PetActivity>)t.Value, StringComparer.OrdinalIgnoreCase));
     }
+
+    private static bool IsSafeId(string id) =>
+        !string.IsNullOrWhiteSpace(id) && id.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 && id is not ("." or "..");
 
     private static BitmapSource LoadImage(string path)
     {

@@ -10,4 +10,6 @@ public sealed class AppPaths : IAppPaths
 
     public string LogsDirectory => Path.Combine(RootDirectory, "logs");
     public string ModelsDirectory => Path.Combine(RootDirectory, "models");
+    public string CustomPetsDirectory => Path.Combine(RootDirectory, "Pets");
+    public string CustomThemesDirectory => Path.Combine(RootDirectory, "Themes");
 }

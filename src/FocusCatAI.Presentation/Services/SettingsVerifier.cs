@@ -94,6 +94,60 @@ public sealed class SettingsVerifier(IServiceProvider services)
         return ok;
     }
 
+    private void CommunityPacks(SettingsViewModel vm, SettingsWindow? window)
+    {
+        const string area = "Community Packs";
+        Record(area, "OpenCustomPetsButton exists", window?.FindName("OpenCustomPetsButton") is Button, "");
+        Record(area, "OpenCustomThemesButton exists", window?.FindName("OpenCustomThemesButton") is Button, "");
+        Record(area, "CommunityPacksText is non-empty", !string.IsNullOrWhiteSpace(vm.CommunityPacksText), vm.CommunityPacksText);
+
+        var temp = Path.Combine(Path.GetTempPath(), "WorkBuddy-verify-packs-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var petsDir = Path.Combine(temp, "Pets");
+            var good = Path.Combine(petsDir, "verifypet");
+            Directory.CreateDirectory(good);
+            File.WriteAllBytes(Path.Combine(good, "idle.png"), [0]);
+            File.WriteAllText(Path.Combine(good, "pet.json"),
+                "{\"displayName\":\"Verify Pet\",\"animations\":{\"Idle\":{\"sheet\":\"idle.png\"}}}");
+            var bad = Path.Combine(petsDir, "badpet");
+            Directory.CreateDirectory(bad);
+            File.WriteAllText(Path.Combine(bad, "pet.json"), "{ not json");
+            var clash = Path.Combine(petsDir, "tuxedo");
+            Directory.CreateDirectory(clash);
+            File.WriteAllText(Path.Combine(clash, "pet.json"),
+                "{\"displayName\":\"Clash\",\"animations\":{\"Idle\":{\"sheet\":\"idle.png\"}}}");
+            File.WriteAllBytes(Path.Combine(clash, "idle.png"), [0]);
+
+            var found = StaticPetCatalog.ScanCustomPets(petsDir, ["cat", "tuxedo", "ginger"]);
+            Record(area, "Valid custom pet is discovered; invalid and built-in-id packs are skipped",
+                found.Count == 1 && found[0].Id == "verifypet" && found[0].DisplayName == "Verify Pet", string.Join(",", found.Select(p => p.Id)));
+
+            var themesDir = Path.Combine(temp, "Themes");
+            Directory.CreateDirectory(themesDir);
+            var theme = CustomThemeLoader.Parse("{\"Brush.Window.Background\":\"#112233\",\"Brush.Bad\":\"red\",\"Other\":\"#112233\"}");
+            Record(area, "Custom theme keeps only valid Brush.* hex entries", theme.Count == 1 && theme.ContainsKey("Brush.Window.Background"), string.Join(",", theme.Keys));
+            Record(area, "Corrupt custom theme is ignored", CustomThemeLoader.Parse("{ nope").Count == 0, "");
+        }
+        catch (Exception ex)
+        {
+            Record(area, "Isolated pack checks completed without exception", false, ex.Message);
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(temp, true);
+            }
+            catch (Exception)
+            {
+                // Best effort cleanup of the temp folder.
+            }
+        }
+
+        Record(area, "Temp pack folder cleaned up", !Directory.Exists(temp), temp);
+    }
+
     private void Storage(IAppPaths paths)
     {
         var file = Path.Combine(paths.RootDirectory, JsonSettingsService.FileName);

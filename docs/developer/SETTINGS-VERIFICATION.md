@@ -66,7 +66,7 @@ OVERALL: PASS (0 failed check(s))
 ## Expected result
 
 exit code `0`, `OVERALL: PASS (0 failed check(s))`, with every area PASS: Storage, Settings Window, General, Pet,
-Pet Selection, Theme, Progression, Achievements, Behavior, Quiet Hours, Notifications, Persistence, Advanced, Runtime.
+Pet Selection, Theme, Progression, Achievements, Behavior, Quiet Hours, Notifications, Persistence, Advanced, Community Packs, Runtime.
 The settings report does not print a total check count, so none is recorded here.
 
 ## Limits

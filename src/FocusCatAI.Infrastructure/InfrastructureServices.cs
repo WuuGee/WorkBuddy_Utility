@@ -13,7 +13,7 @@ public static class DependencyInjection
         services.AddSingleton<IExternalLauncher, ShellLauncher>();
         services.AddSingleton<IRandomSource, SystemRandomSource>();
         services.AddSingleton<IClock, SystemClock>();
-        services.AddSingleton<IPetCatalog, StaticPetCatalog>();
+        services.AddSingleton<IPetCatalog>(sp => new StaticPetCatalog(sp.GetRequiredService<IAppPaths>()));
         services.AddSingleton<IAccessoryCatalog, StaticAccessoryCatalog>();
         services.AddSingleton<ISystemThemeProvider, Theme.WindowsSystemThemeProvider>();
         services.AddSingleton<IPetPreferences, JsonPetPreferences>();

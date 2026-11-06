@@ -13,8 +13,34 @@ namespace FocusCatAI.Presentation.Services;
 /// PetWindow and SpeechBubbleWindow are deliberately not themed. Settings changes and Windows theme changes may
 /// arrive on any thread, so both are marshalled to the UI thread.
 /// </summary>
-public sealed class ThemeApplier(ISettingsService settings, ISystemThemeProvider systemTheme, ILogger<ThemeApplier> logger) : IDisposable
+public sealed class ThemeApplier(ISettingsService settings, ISystemThemeProvider systemTheme, ILogger<ThemeApplier> logger, IAppPaths? paths = null) : IDisposable
 {
+    /// <summary>Overlays valid Brush.* overrides from custom-theme.json onto the given theme dictionary. Never throws.</summary>
+    public void ApplyCustomOverrides(ResourceDictionary theme)
+    {
+        if (paths is null)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var (key, hex) in FocusCatAI.Infrastructure.CustomThemeLoader.Load(paths))
+            {
+                if (System.Windows.Media.ColorConverter.ConvertFromString(hex) is System.Windows.Media.Color color)
+                {
+                    var brush = new System.Windows.Media.SolidColorBrush(color);
+                    brush.Freeze();
+                    theme[key] = brush;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not apply custom theme overrides");
+        }
+    }
+
     private const string LightSource = "pack://application:,,,/Themes/Theme.Light.xaml";
     private const string DarkSource = "pack://application:,,,/Themes/Theme.Dark.xaml";
 
@@ -99,6 +125,8 @@ public sealed class ThemeApplier(ISettingsService settings, ISystemThemeProvider
         }
 
         var next = new ResourceDictionary { Source = new Uri(theme == EffectiveTheme.Dark ? DarkSource : LightSource, UriKind.Absolute) };
+
+        ApplyCustomOverrides(next);
 
         // Replace in place (same index) so the one theme dictionary never duplicates or moves.
         var index = _current is null ? -1 : resources.IndexOf(_current);

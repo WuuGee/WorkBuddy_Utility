@@ -2,7 +2,7 @@
 ; Per-user install: no administrator rights, nothing outside the user's profile and HKCU.
 
 #ifndef AppVersion
-  #define AppVersion "0.4.0"
+  #define AppVersion "0.5.0"
 #endif
 #ifndef PublishDir
   #define PublishDir "..\artifacts\publish"

@@ -31,5 +31,7 @@ public static class VerifierScratch
         public string RootDirectory => root;
         public string LogsDirectory => Path.Combine(root, "logs");
         public string ModelsDirectory => Path.Combine(root, "models");
+        public string CustomPetsDirectory => Path.Combine(root, "Pets");
+        public string CustomThemesDirectory => Path.Combine(root, "Themes");
     }
 }

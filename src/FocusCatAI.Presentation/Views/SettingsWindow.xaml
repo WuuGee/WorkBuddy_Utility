@@ -162,6 +162,12 @@
                                Text="Auto walks in the taskbar when it can be read, and otherwise stays above it." />
                 </StackPanel>
                 <CheckBox Style="{StaticResource Row}" Content="Play intro animation on first launch" IsChecked="{Binding EnableIntroAnimation, Mode=TwoWay}" />
+                <StackPanel x:Name="CommunityPacksCard" Style="{StaticResource Row}">
+                    <TextBlock Style="{StaticResource Label}" Text="Community packs" />
+                    <TextBlock x:Name="CommunityPacksSummary" Text="{Binding CommunityPacksText, Mode=OneWay}" Foreground="{DynamicResource Brush.Text.Secondary}" TextWrapping="Wrap" Margin="0,0,0,6" />
+                    <Button x:Name="OpenCustomPetsButton" Style="{StaticResource ActionButton}" Content="Open Custom Pets Folder" Click="OnOpenCustomPets" />
+                    <Button x:Name="OpenCustomThemesButton" Style="{StaticResource ActionButton}" Content="Open Custom Themes Folder" Click="OnOpenCustomThemes" />
+                </StackPanel>
             </StackPanel>
 
             <StackPanel x:Name="PageBehavior" Visibility="Collapsed">

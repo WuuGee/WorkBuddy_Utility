@@ -38,6 +38,10 @@ public partial class SettingsWindow : Window
 
     private void OnOpenData(object sender, RoutedEventArgs e) => _viewModel.OpenDataFolder();
 
+    private void OnOpenCustomPets(object sender, RoutedEventArgs e) => _viewModel.OpenCustomPetsFolder();
+
+    private void OnOpenCustomThemes(object sender, RoutedEventArgs e) => _viewModel.OpenCustomThemesFolder();
+
     private void OnOpenLogs(object sender, RoutedEventArgs e) => _viewModel.OpenLogFolder();
 
     private void OnResetPreferences(object sender, RoutedEventArgs e)
